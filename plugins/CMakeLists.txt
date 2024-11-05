@@ -233,6 +233,12 @@ if(PLUGIN_OFFICIAL_PRODUCTS OR PLUGINS_ALL)
   add_subdirectory(official_products_support)
 endif()
 
+option(PLUGIN_IQ_MANIPULATION "Enable the support plugin for IQ manipulation" OFF)
+
+if(PLUGIN_IQ_MANIPULATION OR PLUGINS_ALL)
+  add_subdirectory(iq_manipulation_support)
+endif()
+
 option(PLUGIN_DVB "Enable the support plugin for DVB Standards (DVB-S, DVB-S2)" OFF)
 
 if(PLUGIN_DVB OR PLUGINS_ALL)
