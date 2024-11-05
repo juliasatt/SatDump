@@ -1,0 +1,35 @@
+{
+    "iq_re": {
+        "name": "IQ RE",
+        "live": true,
+        "live_cfg": [
+            [
+                1,
+                0
+            ]
+        ],
+        "parameters": {
+            //"samplerate": {
+            //    "value": 1e6
+            //},
+            "output_format": {
+                "type": "options",
+                "value": "cf32",
+                "name": "Baseband Output Format",
+                "options": [
+                    "cs8",
+                    "cs16",
+                    "cf32",
+                    "wav16"
+                ],
+                "description": "Choose the output baseband format"
+            }
+        },
+        "work": {
+            "baseband": {},
+            "conversion": {
+                "iq_re": {}
+            }
+        }
+    }
+}
