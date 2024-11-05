@@ -1,20 +1,34 @@
 #include "module_iq_conversion.h"
 #include "common/dsp/resamp/rational_resampler.h"
+#include "common/dsp/resamp/smart_resampler.h"
+#include <complex.h>
 #include <memory>
 #include <string>
 
 
-namespace iq_manipulation
+namespace iq_conversion
 {
     IQConversionModule::IQConversionModule(std::string input_file, std::string output_file_hint, nlohmann::json parameters) : BaseDemodModule(input_file, output_file_hint, parameters)
     {
+        // Parse params
+        //if (parameters.count("interpolation") > 0)
+        //    interpolation = parameters["interpolation"].get<int>();
+        //if (parameters.count("decimation") > 0)
+        //    decimation = parameters["decimation"].get<int>();
+
+        base_samplerate = d_samplerate * 2;
     }
 
 
     void IQConversionModule::init()
     {
+        BaseDemodModule::initb();
+
         // Resampler
-        //res = std::make_shared<dsp::RationalResamplerBlock<complex_t>>(agc->output_stream, samplerate, final_samplerate);
+        res = std::make_shared<dsp::RationalResamplerBlock<complex_t>>(agc->output_stream, 2, 1);
+
+        // Smart resampler
+        //smart_res = std::make_shared<dsp::SmartResamplerBlock<complex_t>>(agc->output_stream, interpolation, decimation);
     }
 
 
