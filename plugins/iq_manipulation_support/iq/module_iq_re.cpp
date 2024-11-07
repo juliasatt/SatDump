@@ -16,8 +16,7 @@ namespace iq_re
 {
     IQREModule::IQREModule(std::string input_file, std::string output_file_hint, nlohmann::json parameters) : BaseDemodModule(input_file, output_file_hint, parameters)
     {
-
-        base_samplerate = d_samplerate * 2;
+        res_samplerate = d_samplerate * 2;
     }
 
 
@@ -69,32 +68,28 @@ namespace iq_re
         //    d_output_files.push_back(d_output_file_hint + "." + output_format);
         //}
 
-        if (output_data_type == DATA_FILE)
-        {
-            file_sink->start();
-            file_sink->set_output_sample_type(output_format);
-            std::string int_file = d_output_file_hint + "_" + std::to_string((uint64_t)base_samplerate);
-        }
-
-
         logger->info("Using input baseband " + d_input_file);
         logger->info("Converting to " + d_output_file_hint + output_format);
         logger->info("Buffer size : " + std::to_string(d_buffer_size));
 
         time_t lastTime = 0;
 
+        uint64_t final_data_size = 0;
         complex_t last_samp;
 
         // Start
         BaseDemodModule::start();
         res->start();
-        file_sink->start();
-        splitter->start();
 
         complex_t *work_buffer_complex = dsp::create_volk_buffer<complex_t>(d_buffer_size);
         complex_t *base_buffer_complex = dsp::create_volk_buffer<complex_t>(d_buffer_size);
         complex_t *delayed_buffer_complex = dsp::create_volk_buffer<complex_t>(d_buffer_size);
         complex_t *non_delayed_buffer_complex = dsp::create_volk_buffer<complex_t>(d_buffer_size);
+
+        float *work_buffer_float = dsp::create_volk_buffer<float>(d_buffer_size);
+
+        int8_t * buffer_s8 = dsp::create_volk_buffer<int8_t>(d_buffer_size * 2);
+        int16_t * buffer_s16 = dsp::create_volk_buffer<int16_t>(d_buffer_size * 2);
 
 
 
@@ -108,6 +103,8 @@ namespace iq_re
                 res->output_stream->flush();
                 continue;
             }
+
+            out_mtx.lock();
 
             if (multiplyConjugate)
             {
@@ -136,18 +133,41 @@ namespace iq_re
 
             }
 
-            //work_out->writeBuf = work_buffer_complex;
-            //splitter = std::make_shared<dsp::SplitterBlock>(work_out->readBuf);
-
-            std::shared_ptr<dsp::FileSinkBlock> file_sink = std::make_shared<dsp::FileSinkBlock>(work_buffer_complex);
-
             if (output_data_type == DATA_FILE)
             {
-                splitter->add_output("output_baseband");
-                splitter->set_enabled("output_baseband", true);
-                file_sink = std::make_shared<dsp::FileSinkBlock>(splitter->get_output("output_baseband"));
+                if (output_format == "cf32")
+                {
+                    data_out.write((char *)work_buffer_complex, dat_size * sizeof(complex_t));
+                    final_data_size += dat_size * sizeof(complex_t);
+                }
+                else if (output_format == "cs16" || output_format == "wav")
+                {
+                    volk_32f_s32f_convert_16i(buffer_s16, (float *)work_buffer_float, 65535, dat_size * 2);
+                    data_out.write((char *)buffer_s16, dat_size * sizeof(int16_t) * 2);
+                    final_data_size += dat_size * sizeof(int16_t) * 2;
+                }
+                else if (output_format == "cs8")
+                {
+                    volk_32f_s32f_convert_8i(buffer_s8, (float *)work_buffer_float, 127, dat_size * 2);
+                    data_out.write((char *)buffer_s8, dat_size * sizeof(int8_t) * 2);
+                    final_data_size += dat_size * sizeof(int8_t) * 2;
+                }
+//#ifdef BUILD_ZIQ
+                //else if (output_format == "ziq")
+                //{
+                //    final_data_size += 
+                //}
             }
 
+
+
+            //if (output_data_type == DATA_FILE)
+            //{
+            //    data_out.write((char *)work_buffer_complex, dat_size * sizeof(complex_t));
+            //    final_data_size += dat_size * sizeof(complex_t);
+            //}
+
+            out_mtx.unlock();
 
             res->output_stream->flush();
 
@@ -160,16 +180,12 @@ namespace iq_re
                 logger->info("Progress " + std::to_string(round(((double)progress / (double)filesize) * 1000.0) / 10.0) + "%%");
             }
         }
-
-
     }
 
     void IQREModule::stop()
     {
         // Stop
         BaseDemodModule::stop();
-        file_sink->stop();
-        splitter->stop();
         res->stop();
         res->output_stream->stopReader();
     }
@@ -190,10 +206,4 @@ namespace iq_re
     {
         return std::make_shared<IQREModule>(input_file, output_file_hint, parameters);
     }
-
-
-
-
-
-
 }
