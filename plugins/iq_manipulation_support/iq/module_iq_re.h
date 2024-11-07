@@ -16,6 +16,7 @@ namespace iq_re
         std::shared_ptr<dsp::RationalResamplerBlock<complex_t>> res;
         std::shared_ptr<dsp::FileSinkBlock> file_sink;
         std::shared_ptr<dsp::SplitterBlock> splitter;
+        std::shared_ptr<dsp::stream<complex_t>> work_out;
 
         bool multiplyConjugate = true;
         bool exponentiate = false;

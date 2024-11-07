@@ -96,6 +96,8 @@ namespace iq_re
         complex_t *delayed_buffer_complex = dsp::create_volk_buffer<complex_t>(d_buffer_size);
         complex_t *non_delayed_buffer_complex = dsp::create_volk_buffer<complex_t>(d_buffer_size);
 
+
+
         int dat_size = 0;
         while (demod_should_run())
         {
@@ -134,7 +136,10 @@ namespace iq_re
 
             }
 
-            splitter = std::make_shared<dsp::SplitterBlock>(work_buffer_complex);
+            //work_out->writeBuf = work_buffer_complex;
+            //splitter = std::make_shared<dsp::SplitterBlock>(work_out->readBuf);
+
+            std::shared_ptr<dsp::FileSinkBlock> file_sink = std::make_shared<dsp::FileSinkBlock>(work_buffer_complex);
 
             if (output_data_type == DATA_FILE)
             {
