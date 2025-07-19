@@ -76,10 +76,10 @@ namespace satdump
 
         timestampPlusDuration = timestamp + seconds; // TODOREWORK check to make sure it's just as simple as adding the seconds to the timestamp
 
-        current_baseband_container->setNumOfLines(nLines);
-        current_baseband_container->setFFTSize(fft_size);
-        current_baseband_container->setScaleLimits(scale_min, scale_max);
-        current_baseband_container->setRate(fft_size, nLines);
+        // current_baseband_container->setNumOfLines(nLines);
+        // current_baseband_container->setFFTSize(fft_size);
+        // current_baseband_container->setScaleLimits(scale_min, scale_max);
+        // current_baseband_container->setRate(fft_size, nLines);
 
         file_source->set_cfg("file", select_baseband_dialog.getPath());
         file_source->set_cfg("type", bb_type);
@@ -92,10 +92,121 @@ namespace satdump
         file_source->start();
         fft_gen->start();
 
-        needs_to_proc = true;
+        // needs_to_proc = true;
 
         while (!file_source->d_eof)
             stopProcessing();
+    }
+
+    bool BasebandToolboxHandler::buffer_alloc(size_t size)
+    {
+        uint32_t *newTextureBuffer = (uint32_t *)realloc(textureBuffer, size);
+        if (newTextureBuffer == nullptr)
+        {
+            logger->error("Cannot allocate memory for Spectrogram");
+            if (textureBuffer != nullptr)
+            {
+                free(textureBuffer);
+                textureBuffer = nullptr;
+            }
+            last_x_pos = 0;
+            last_y_pos = 0;
+            return false;
+        }
+
+        textureBuffer = newTextureBuffer;
+        uint64_t oldSize = last_x_pos * last_y_pos;
+        if (size > oldSize * sizeof(uint32_t))
+            memset(&textureBuffer[oldSize], 0, size - oldSize * sizeof(uint32_t));
+        last_x_pos = x_pos;
+        last_y_pos = y_pos;
+        return true;
+    }
+
+    void BasebandToolboxHandler::push_tmp_floats(float *values)
+    {
+
+        uint8_t *ptr = current_baseband_container->get_ptr();
+        size_t size = current_baseband_container->get_ptr_size();
+
+        char name[1000];
+        tmpnam(name);
+        std::string tmpfile = name;
+        std::ofstream file_out(tmpfile, std::ios::binary);
+
+        float *tmp_floats = nullptr;
+        size_t current_ptr_size = 0;
+        // current_ptr_size++;
+
+        // file_out.write((char *)&vf, current_ptr_size * sizeof(float));
+        if (textureID == 0 || textureBuffer == nullptr)
+            return;
+
+        if ((fft_img_i++ % fft_img_i_mod) == 0)
+        {
+            if (fft_img_i * 5e6 == fft_img_i_mod)
+                fft_img_i = 0;
+
+            memmove(&textureBuffer[x_pos * 1], &textureBuffer[x_pos * 0], x_pos * (y_pos - 1) * sizeof(uint32_t));
+
+            double fz = (double)fft_size / (double)x_pos;
+            for (int i = 0; i < x_pos; i++)
+            {
+                float fft_pos = i * fz;
+
+                if (fft_pos >= fft_size)
+                    fft_pos = fft_size - 1;
+
+                float final = -INFINITY;
+                for (float v = fft_pos; v < fft_pos + 1; v += 1)
+                    if (final < values[(int)floor(v)])
+                        final = values[(int)floor(v)];
+
+                int v = ((final - scale_min) / fabs(scale_max - scale_min)) * resolution;
+
+                if (v < 0)
+                    v = 0;
+                if (v >= resolution)
+                    v = resolution - 1;
+
+                current_ptr_size++;
+
+                tmp_floats[i] = palette[v];
+                textureBuffer[i] = palette[v];
+                file_out.write((char *)tmp_floats, current_ptr_size);
+            }
+            has_to_update = true;
+        }
+        file_out.close();
+
+        std::shared_ptr<satdump::BBContainer> newfloatc = std::make_shared<satdump::BBContainer>(current_baseband_container->getName() + " Flaots", tmpfile);
+        newfloatc->d_is_temp = true;
+        // newfloatc->doUpdateTextures();
+        if (current_baseband_container->bb_toolbox != nullptr)
+            ((BasebandToolboxHandler *)current_baseband_container->bb_toolbox)->addSubHandler(std::make_shared<BasebandToolboxHandler>(newfloatc));
+        else
+            logger->error("Can't add container!");
+    }
+
+    void BasebandToolboxHandler::set_rate(int input_rate, int output_rate)
+    {
+        work_mtx.lock();
+        if (output_rate <= 0)
+            output_rate = 1;
+        fft_img_i_mod = input_rate / output_rate;
+        if (fft_img_i_mod <= 0)
+            fft_img_i_mod = 1;
+        fft_img_i = 0;
+        work_mtx.unlock();
+    }
+
+    void BasebandToolboxHandler::set_palette(colormaps::Map selectedPalette, bool mutex)
+    {
+        if (mutex)
+            work_mtx.lock();
+        palette = colormaps::generatePalette(selectedPalette, resolution);
+        if (mutex)
+            work_mtx.unlock();
     }
 
     void BasebandToolboxHandler::stopProcessing()
@@ -103,7 +214,6 @@ namespace satdump
         file_source->stop();
         fft_gen->stop();
         is_busy = false;
-        // needs_to_proc = false;
     }
 
     void BasebandToolboxHandler::drawMenu()
@@ -161,7 +271,8 @@ namespace satdump
             widgets::SteppedSliderFloat("FFT Max", &scale_max, -160, 150);
             widgets::SteppedSliderFloat("FFT Min", &scale_min, -160, 150);
             if (ImGui::Combo("Palette", &selected_palette, palettes_str.c_str()))
-                current_baseband_container->setPallete(palettes[selected_palette], true);
+                set_palette(palettes[selected_palette], true);
+            // current_baseband_container->setPallete(palettes[selected_palette], true);
             ImGui::Separator();
         }
         if (is_busy)

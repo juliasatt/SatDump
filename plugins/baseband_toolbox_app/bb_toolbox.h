@@ -26,6 +26,9 @@ namespace satdump
         void drawMenu();
         void drawContents(ImVec2 win_size);
         void drawMenuBar();
+        bool active = false;
+
+        bool buffer_alloc(size_t size);
 
     private:
         std::mutex work_mtx;
@@ -49,6 +52,22 @@ namespace satdump
         std::string file_name_holder;
 
     private:
+        bool has_to_update = false;
+        unsigned int textureID = 0;
+        uint32_t *textureBuffer = nullptr;
+        const size_t d_nLinesToUpdate = 10;
+        const int resolution = 65536;
+
+        std::vector<uint32_t> palette;
+
+        int fft_img_i_mod = 0;
+        int fft_img_i = 0;
+        int last_x_pos = 0;
+        int last_y_pos = 0;
+        int x_pos;
+        int y_pos;
+
+    private:
         uint64_t samplerate = 6e6;
         bool stereo = true;
         int bbChannels = 2;
@@ -65,7 +84,7 @@ namespace satdump
         std::string palettes_str;
         int selected_palette = 0;
 
-        uint64_t nLines = 2;
+        uint64_t nLines = 100;
         int block_size = 131072;
 
         bool needs_to_proc = false;
@@ -78,7 +97,9 @@ namespace satdump
         void process();
         void stopProcessing();
         void applyParams();
-        void set_palette(colormaps::Map selectedPallete, bool mutex = true);
+        void push_tmp_floats(float *values);
+        void set_palette(colormaps::Map selectedPalette, bool mutex = true);
+        void set_rate(int input_rate, int output_rate);
 
     public:
         std::shared_ptr<ndsp::FileSourceBlock> file_source;
