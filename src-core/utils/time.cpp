@@ -64,4 +64,19 @@ namespace satdump
 
         return timestamp_string.str();
     }
+
+    double timestamp_from_filename(std::string filename)
+    {
+        std::string file_string = filename.substr(0, 20);
+        std::stringstream timestamp_string;
+        std::tm t = {};
+        std::istringstream ss(file_string);
+
+        ss >> std::get_time(&t, "%Y-%m-%d_%H-%M-%S"); // TODOREWORK add double/milliseconds precision
+
+        std::time_t unix_timestamp = std::mktime(&t);
+
+        return unix_timestamp;
+    }
+
 } // namespace satdump

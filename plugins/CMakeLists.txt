@@ -469,3 +469,9 @@ option(PLUGIN_WIPSETTINGS_EDITOR_APP "Enable WIP Settings Editor Application" ON
 if (PLUGIN_WIPSETTINGS_EDITOR_APP)
   add_subdirectory(wip_settings_editor_app)
 endif()
+
+option(PLUGIN_BB_TOOLBOX_APP "Enable WIP Baseband Toolbox Application" ON)
+
+if (PLUGIN_BB_TOOLBOX_APP)
+  add_subdirectory(baseband_toolbox_app)
+endif()
