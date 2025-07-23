@@ -22,13 +22,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build_docs:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-24.04
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,14 +61,6 @@ jobs:
         # Execute the build.  You can specify a specific target with "--target <NAME>"
         run: make -j8
 
-  # Single deploy job since we're just deploying
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build_docs
-    steps:
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
