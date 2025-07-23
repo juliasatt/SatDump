@@ -62,13 +62,6 @@ jobs:
         # Execute the build.  You can specify a specific target with "--target <NAME>"
         run: make -j8
 
-      - name: Upload HTML Docs
-        id: deployment
-        uses: actions/upload-artifact@v4
-        with:
-          name: SatDump-Docs
-          path: "${{runner.workspace}}/build/documentation/html"
-
   # Single deploy job since we're just deploying
   deploy:
     environment:
@@ -79,6 +72,11 @@ jobs:
     steps:
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload html documentation
+          path: '${{runner.workspace}}/build/documentation/html/'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
