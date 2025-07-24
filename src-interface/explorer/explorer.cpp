@@ -6,6 +6,7 @@
 // #include "products/dataset.h"
 #include "common/utils.h"
 // #include "core/resources.h"
+#include "core/exception.h"
 #include "core/plugin.h"
 
 #include "core/style.h"
@@ -28,12 +29,13 @@
 #include "image/io.h"
 
 #include "imgui/imgui_filedrop.h"
+#include "main_ui.h"
 
 namespace satdump
 {
     namespace explorer
     {
-        ExplorerApplication::ExplorerApplication() : Application("explorer")
+        ExplorerApplication::ExplorerApplication()
         {
             master_handler = std::make_shared<handlers::DummyHandler>("MasterHandlerExplorer");
 
@@ -44,7 +46,11 @@ namespace satdump
             trash_handler->addSubHandler(trash_h);
             trash_handler->setCanBeDraggedTo(false);
 
-            // Enable dropping files onto the explorer. TODOREWORK, check the explorer IS active!?
+            // Add processing handler "spot"
+            processing_handler = std::make_shared<handlers::DummyHandler>("ProcessingHandlerExplorer");
+            processing_handler->setCanBeDraggedTo(false);
+
+            // Enable dropping files onto the explorer.
             eventBus->register_handler<imgui_utils::FileDropEvent>(
                 [this](const imgui_utils::FileDropEvent &v)
                 {
@@ -53,9 +59,9 @@ namespace satdump
                 });
 
             // Enable adding handlers to the explorer externally
-            eventBus->register_handler<ExplorerAddHandlerEvent>([this](const ExplorerAddHandlerEvent &e) { master_handler->addSubHandler(e.h); });
+            eventBus->register_handler<ExplorerAddHandlerEvent>([this](const ExplorerAddHandlerEvent &e) { addHandler(e.h, e.open, e.is_processing); });
 
-            // TODOREWORK. Returns the last selected handler of a specific type if available
+            // Returns the last selected handler of a specific type if available
             eventBus->register_handler<GetLastSelectedOfTypeEvent>(
                 [this](const GetLastSelectedOfTypeEvent &v)
                 {
@@ -64,15 +70,37 @@ namespace satdump
                     else
                         v.h = nullptr;
                 });
-
-            // TODOREWORK remove
-            tryOpenFileInExplorer("/home/alan/Downloads/SatDump_NEWPRODS/metop_test/dataset.json");
         }
 
-        ExplorerApplication::~ExplorerApplication()
+        ExplorerApplication::~ExplorerApplication() {}
+
+        void ExplorerApplication::addHandler(std::shared_ptr<handlers::Handler> h, bool open, bool is_processing)
         {
-            if (file_open_thread.joinable())
-                file_open_thread.join();
+            if (is_processing)
+                processing_handler->addSubHandler(h);
+            else
+            {
+                // Try adding to a group if possible
+                bool added = false;
+                for (auto &v : group_definitions)
+                {
+                    for (auto &v2 : v.second)
+                    {
+                        if (v2 == h->getID())
+                        {
+                            if (groups_handlers.count(v.first) == 0)
+                                groups_handlers.emplace(v.first, std::make_shared<handlers::DummyHandler>(v.first + "HandlerExplorer"));
+                            groups_handlers[v.first]->addSubHandler(h);
+                            added = true;
+                        }
+                    }
+                }
+
+                if (!added)
+                    master_handler->addSubHandler(h);
+            }
+            if (open)
+                curr_handler = h;
         }
 
         void ExplorerApplication::drawPanel()
@@ -88,6 +116,42 @@ namespace satdump
                     ImGui::TableSetupColumn("##masterhandlertable_col", ImGuiTableColumnFlags_None);
                     ImGui::TableNextColumn();
 
+                    bool rendering_separators = false;
+
+                    if (processing_handler->hasSubhandlers())
+                    {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::SeparatorText("Processing");
+
+                        processing_handler->drawTreeMenu(curr_handler);
+                        for (auto &h : processing_handler->getAllSubHandlers())
+                            if (h->getName() == "PROCESSING_DONE") // TODOREWORK MASSIVE HACK
+                                processing_handler->delSubHandler(h);
+
+                        rendering_separators = true;
+                    }
+
+                    for (auto &v : groups_handlers)
+                    {
+                        if (v.second->hasSubhandlers())
+                        {
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::SeparatorText(v.first.c_str());
+
+                            v.second->drawTreeMenu(curr_handler);
+                            rendering_separators = true;
+                        }
+                    }
+
+                    if (rendering_separators)
+                    {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::SeparatorText("Others");
+                    }
+
                     master_handler->drawTreeMenu(curr_handler);
                     trash_handler->drawTreeMenu(curr_handler);
 
@@ -96,10 +160,10 @@ namespace satdump
 
                 if (prev_curr != curr_handler)
                     last_selected_handler.insert_or_assign(curr_handler->getID(), curr_handler);
-
-                if (curr_handler)
-                    curr_handler->drawMenu();
             }
+
+            if (curr_handler)
+                curr_handler->drawMenu();
         }
 
         void ExplorerApplication::drawMenuBar()
@@ -139,62 +203,18 @@ namespace satdump
                         ImGui::EndMenu();
                     }
 
-                    // TODOREWORK remove
-                    if (ImGui::BeginMenu("Hardcoded"))
-                    {
-                        if (ImGui::MenuItem("Load KMSS"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/SatDump_NEWPRODS/KMSS_24/dataset.json");
-                        if (ImGui::MenuItem("Load Sterna"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/SatDump_NEWPRODS/aws_pfm_cadu/dataset.json");
-                        if (ImGui::MenuItem("Load MSUGS"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/20241231_132953_ARKTIKA-M 2_dat/MSUGS_VIS1/product.cbor");
-                        if (ImGui::MenuItem("Load MSUGS 2"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/SatDump_NEWPRODS/20250104_071415_ELEKTRO-L_3_dat/dataset.json");
-                        if (ImGui::MenuItem("Load MetOp"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/SatDump_NEWPRODS/metop_test/dataset.json");
-                        if (ImGui::MenuItem("Load L3"))
-                            tryOpenFileInExplorer("/data_ssd/ELEKTRO-L3/20250104_071415_ELEKTRO-L 3.dat_OUT/dataset.json");
-                        if (ImGui::MenuItem("Load JPSS-1"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/SatDump_NEWPRODS/202411271228_NOAA_20/dataset.json");
-                        if (ImGui::MenuItem("Load JPSS-2"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/SatDump_NEWPRODS/n21_day/dataset.json");
-                        if (ImGui::MenuItem("Load APT"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/audio_137912500Hz_11-39-56_04-03-2024_wav/dataset.json");
-                        if (ImGui::MenuItem("Load GOES"))
-                            tryOpenFileInExplorer("/home/alan/Downloads/SatDump_NEWPRODS/goes_hrit_jvital2013_cadu/IMAGES/GOES-16/Full Disk/2024-04-17_18-00-20/product.cbor");
-                        if (ImGui::MenuItem("Load Shapefile"))
-                        {
-                            auto shp_h = std::make_shared<handlers::ShapefileHandler>(resources::getResourcePath("maps/ne_10m_admin_0_countries.shp"));
-                            master_handler->addSubHandler(shp_h);
-                        }
-
-                        if (ImGui::MenuItem("Load Shapefile FRA_1"))
-                        {
-                            auto shp_h = std::make_shared<handlers::ShapefileHandler>("/home/alan/Downloads/gadm41_FRA_shp/gadm41_FRA_1.shp");
-                            master_handler->addSubHandler(shp_h);
-                        }
-
-                        if (ImGui::MenuItem("Load Shapefile FRA_2"))
-                        {
-                            auto shp_h = std::make_shared<handlers::ShapefileHandler>("/home/alan/Downloads/gadm41_FRA_shp/gadm41_FRA_2.shp");
-                            master_handler->addSubHandler(shp_h);
-                        }
-
-                        ImGui::EndMenu();
-                    }
-
                     if (ImGui::BeginMenu("Tools"))
                     { // TODOREWORK?
                         if (ImGui::MenuItem("Projection"))
-                            master_handler->addSubHandler(std::make_shared<handlers::ProjectionHandler>());
+                            addHandler(std::make_shared<handlers::ProjectionHandler>());
                         if (ImGui::MenuItem("DSP Flowgraph"))
-                            master_handler->addSubHandler(std::make_shared<handlers::DSPFlowGraphHandler>());
+                            addHandler(std::make_shared<handlers::DSPFlowGraphHandler>());
                         if (ImGui::MenuItem("Waterfall TEST"))
-                            master_handler->addSubHandler(std::make_shared<handlers::WaterfallTestHandler>());
+                            addHandler(std::make_shared<handlers::WaterfallTestHandler>());
                         if (ImGui::MenuItem("NewRec TEST"))
-                            master_handler->addSubHandler(std::make_shared<handlers::NewRecHandler>());
+                            addHandler(std::make_shared<handlers::NewRecHandler>());
                         if (ImGui::MenuItem("CycloHelper TEST"))
-                            master_handler->addSubHandler(std::make_shared<handlers::CycloHelperHandler>());
+                            addHandler(std::make_shared<handlers::CycloHelperHandler>());
                         ImGui::EndMenu();
                     }
 
@@ -238,11 +258,13 @@ namespace satdump
 
         void ExplorerApplication::drawContents() { ImGui::Text("No handler selected!"); }
 
-        void ExplorerApplication::drawUI()
+        void ExplorerApplication::draw()
         {
+            drawMenuBar();
+
             ImVec2 explorer_size = ImGui::GetContentRegionAvail();
 
-            if (ImGui::BeginTable("##wiever_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+            if (ImGui::BeginTable("##explorer_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
             {
                 ImGui::TableSetupColumn("##panel_v", ImGuiTableColumnFlags_None, explorer_size.x * panel_ratio);
                 ImGui::TableSetupColumn("##view", ImGuiTableColumnFlags_None, explorer_size.x * (1.0f - panel_ratio));
@@ -254,8 +276,7 @@ namespace satdump
                     panel_ratio = left_width / explorer_size.x;
                 last_width = left_width;
 
-                ImGui::BeginChild("ExplorerChildPanel", {left_width, float(explorer_size.y - 10)}, false, ImGuiWindowFlags_MenuBar);
-                drawMenuBar();
+                ImGui::BeginChild("ExplorerChildPanel", {left_width, float(explorer_size.y - 10)}, false);
                 drawPanel();
                 ImGui::EndChild();
 
@@ -274,72 +295,96 @@ namespace satdump
 
         void ExplorerApplication::tryOpenFileInExplorer(std::string path)
         {
-            if (file_open_thread.joinable())
-                file_open_thread.join();
             auto fun = [this, path]()
             {
+                eventBus->fire_event<SetIsProcessingEvent>({});
+
                 try
                 {
-                    if (!std::filesystem::path(path).has_extension())
-                    {
-                        logger->error("Invalid file, no extension!");
-                        return;
-                    }
+                    // Get available loaders
+                    std::vector<std::pair<std::string, std::function<void(std::string, ExplorerApplication *)>>> loaders;
 
+                    // Default stuff
                     if (std::filesystem::path(path).extension().string() == ".cbor")
-                    {
-                        logger->trace("Explorer loading product " + path);
+                        loaders.push_back({"Product Loader", [](std::string path, ExplorerApplication *e)
+                                           {
+                                               logger->trace("Explorer loading product " + path);
 
-                        try
-                        {
-                            auto prod_h = handlers::getProductHandlerForProduct(products::loadProduct(path));
-                            master_handler->addSubHandler(prod_h);
-                        }
-                        catch (std::exception &e)
-                        {
-                            logger->error("Error loading product! Maybe not a valid product? (Reminder : Pre-2.0.0 products are NOT compatible with 2.0.0) Details : %s", e.what());
-                        }
-                    }
+                                               try
+                                               {
+                                                   auto prod_h = handlers::getProductHandlerForProduct(products::loadProduct(path));
+                                                   e->addHandler(prod_h);
+                                               }
+                                               catch (std::exception &e)
+                                               {
+                                                   logger->error("Error loading product! Maybe not a valid product? (Reminder : Pre-2.0.0 products are NOT compatible with 2.0.0) Details : %s",
+                                                                 e.what());
+                                               }
+                                           }});
                     else if (std::filesystem::path(path).extension().string() == ".json")
-                    {
-                        logger->trace("Viewer loading dataset " + path);
+                        loaders.push_back(
+                            {"Dataset Loader", [](std::string path, ExplorerApplication *e)
+                             {
+                                 logger->trace("Viewer loading dataset " + path);
 
-                        try
-                        {
-                            products::DataSet dataset;
-                            dataset.load(path);
-                            std::shared_ptr<handlers::DatasetHandler> dat_h = std::make_shared<handlers::DatasetHandler>(std::filesystem::path(path).parent_path().string(), dataset);
-                            master_handler->addSubHandler(dat_h);
-                        }
-                        catch (std::exception &e)
-                        {
-                            logger->error("Error loading dataset! Maybe not a valid dataset? (Reminder : Pre-2.0.0 datasets are NOT compatible with 2.0.0) Details : %s", e.what());
-                        }
-                    }
+                                 try
+                                 {
+                                     products::DataSet dataset;
+                                     dataset.load(path);
+                                     std::shared_ptr<handlers::DatasetHandler> dat_h = std::make_shared<handlers::DatasetHandler>(std::filesystem::path(path).parent_path().string(), dataset);
+                                     e->addHandler(dat_h);
+                                 }
+                                 catch (std::exception &e)
+                                 {
+                                     logger->error("Error loading dataset! Maybe not a valid dataset? (Reminder : Pre-2.0.0 datasets are NOT compatible with 2.0.0) Details : %s", e.what());
+                                 }
+                             }});
                     else if (std::filesystem::path(path).extension().string() == ".shp")
-                    {
-                        logger->trace("Viewer loading shapefile " + path);
+                        loaders.push_back({"Shapefile Loader", [](std::string path, ExplorerApplication *e)
+                                           {
+                                               logger->trace("Viewer loading shapefile " + path);
+                                               e->addHandler(std::make_shared<handlers::ShapefileHandler>(path));
+                                           }});
+#if 0 // TODOREWORK ADD MENU
+                                           else if (std::filesystem::path(path).has_extension())
+                        loaders.push_back({"Image Loader", [](std::string path, ExplorerApplication *e)
+                                           {
+                                               logger->trace("Viewer loading image " + path);
 
-                        master_handler->addSubHandler(std::make_shared<handlers::ShapefileHandler>(path));
+                                               image::Image img;
+                                               image::load_img(img, path);
+                                               if (img.size() > 0)
+                                                   e->addHandler(std::make_shared<handlers::ImageHandler>(img, std::filesystem::path(path).stem().string()));
+                                               else
+                                                   logger->error("Could not open this file as image!");
+                                           }});
+#endif
+
+                    // Plugin loaders
+                    eventBus->fire_event<ExplorerRequestFileLoad>({std::filesystem::path(path).stem().string() + std::filesystem::path(path).extension().string(), loaders});
+
+                    // Load it
+                    if (loaders.size() == 1)
+                    {
+                        loaders[0].second(path, this);
+                    }
+                    else if (loaders.size() > 1)
+                    {
+                        throw satdump_exception("More than one loader available! TODO SELECTION MENU!");
                     }
                     else
                     {
-                        logger->trace("Viewer loading image " + path);
-
-                        image::Image img;
-                        image::load_img(img, path);
-                        if (img.size() > 0)
-                            master_handler->addSubHandler(std::make_shared<handlers::ImageHandler>(img, std::filesystem::path(path).stem().string()));
-                        else
-                            logger->error("Could not open this file as image!");
+                        throw satdump_exception("No loader found for file : " + path + "!");
                     }
                 }
                 catch (std::exception &e)
                 {
                     logger->error("Error opening file! => %s", e.what());
                 }
+
+                eventBus->fire_event<SetIsDoneProcessingEvent>({});
             };
-            file_open_thread = std::thread(fun);
+            file_open_queue.push(fun);
         }
     } // namespace explorer
 }; // namespace satdump

@@ -101,7 +101,16 @@
     },
     "fengyun3_abc_mpt": {
         "name": "FengYun-3 A/B/C MPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "FengYun-3 A/B",
+                7750e6
+            ],
+            [
+                "FengyYun-3 C",
+                7780e6
+            ]
+        ],
         "parameters": {
             "dump_mersi": {
                 "type": "bool",
@@ -135,20 +144,31 @@
                     "satellite": "fy3ab",
                     "downlink": "mpt",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                 }
             }
         }
     },
     "fengyun3_d_ahrpt": {
         "name": "FengYun-3 D AHRPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "AHPRT",
+                7820e6
+            ]
+        ],
         "parameters": {
             "dump_mersi": {
                 "type": "bool",
                 "value": false,
                 "name": "Dump MERSI(.bin)",
                 "description": "Dump raw MERSI frames for processing with\nother software, such as Fred's WeatherSat!"
+            },
+            "mersi_histmatch": {
+                "type": "bool",
+                "value": true,
+                "name": "MERSI Line-based histogram equalization",
+                "description": "Toggle line-based histogram equalization for MERSI, to make the image smoother. However, this causes problems with thunderstorm clouds appearing too white."
             }
         },
         "work": {
@@ -176,20 +196,31 @@
                 "parameters": {
                     "satellite": "fy3d",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                 }
             }
         }
     },
     "fengyun3_e_ahrpt": {
         "name": "FengYun-3 E AHRPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "Main",
+                7860e6
+            ]
+        ],
         "parameters": {
             "dump_mersi": {
                 "type": "bool",
                 "value": false,
                 "name": "Dump MERSI(.bin)",
                 "description": "Dump raw MERSI frames for processing with\nother software, such as Fred's WeatherSat!"
+            },
+            "mersi_histmatch": {
+                "type": "bool",
+                "value": true,
+                "name": "MERSI Line-based histogram equalization",
+                "description": "Toggle line-based histogram equalization for MERSI, to make the image smoother. However, this causes problems with thunderstorm clouds appearing too white."
             }
         },
         "work": {
@@ -217,20 +248,31 @@
                 "parameters": {
                     "satellite": "fy3e",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                 }
             }
         }
     },
     "fengyun3_f_ahrpt": {
         "name": "FengYun-3 F AHRPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "Main",
+                7790e6
+            ]
+        ],
         "parameters": {
             "dump_mersi": {
                 "type": "bool",
                 "value": false,
                 "name": "Dump MERSI(.bin)",
                 "description": "Dump raw MERSI frames for processing with\nother software, such as Fred's WeatherSat!"
+            },
+            "mersi_histmatch": {
+                "type": "bool",
+                "value": true,
+                "name": "MERSI Line-based histogram equalization",
+                "description": "Toggle line-based histogram equalization for MERSI, to make the image smoother. However, this causes problems with thunderstorm clouds appearing too white."
             }
         },
         "work": {
@@ -258,14 +300,19 @@
                 "parameters": {
                     "satellite": "fy3f",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                 }
             }
         }
     },
     "fengyun3_g_ahrpt": {
         "name": "FengYun-3 G AHRPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "Main",
+                7790e6
+            ]
+        ],
         "parameters": {
             "satellite_rotated": {
                 "type": "bool",
@@ -278,6 +325,12 @@
                 "value": false,
                 "name": "Dump MERSI(.bin)",
                 "description": "Dump raw MERSI frames for processing with\nother software, such as Fred's WeatherSat!"
+            },
+            "mersi_histmatch": {
+                "type": "bool",
+                "value": true,
+                "name": "MERSI Line-based histogram equalization",
+                "description": "Toggle line-based histogram equalization for MERSI, to make the image smoother.\nHowever, this causes problems with thunderstorm clouds appearing too white."
             }
         },
         "work": {
@@ -305,7 +358,7 @@
                 "parameters": {
                     "satellite": "fy3g",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                     // "mersi_rotate": false // Not turned 180 anymore
                 }
             }
@@ -313,7 +366,12 @@
     },
     "fengyun3_abc_dpt": {
         "name": "FengYun-3 A/B/C DPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "FengYun-3 A/B",
+                8145.95e6
+            ]
+        ],
         "parameters": {
             "dump_mersi": {
                 "type": "bool",
@@ -348,14 +406,19 @@
                     "satellite": "fy3ab",
                     "downlink": "dpt",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                 }
             }
         }
     },
     "fengyun3_d_dpt": {
         "name": "FengYun-3 D DPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "Main",
+                8250e6
+            ]
+        ],
         "parameters": {
             "dump_mersi": {
                 "type": "bool",
@@ -389,14 +452,19 @@
                 "parameters": {
                     "satellite": "fy3d",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                 }
             }
         }
     },
     "fengyun3_e_dpt": {
         "name": "FengYun-3 E DPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "Main",
+                8212.5e6
+            ]
+        ],
         "parameters": {
             "dump_mersi": {
                 "type": "bool",
@@ -432,14 +500,19 @@
                 "parameters": {
                     "satellite": "fy3e",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                 }
             }
         }
     },
     "fengyun3_f_dpt": {
         "name": "FengYun-3 F DPT",
-        "frequencies": [],
+        "frequencies": [
+            [
+                "Main",
+                8212.5e6
+            ]
+        ],
         "parameters": {
             "dump_mersi": {
                 "type": "bool",
@@ -475,7 +548,7 @@
                 "parameters": {
                     "satellite": "fy3f",
                     "mersi_bowtie": true,
-                    "mersi_histmatch": true
+                    "mersi_histmatch": false
                 }
             }
         }

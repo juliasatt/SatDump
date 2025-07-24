@@ -2,10 +2,10 @@
 
 #include "../image/image_handler.h"
 #include "product_handler.h"
-#include "products2/image/calibration_converter.h"
-#include "products2/image/calibration_units.h"
-#include "products2/image/image_calibrator.h"
-#include "products2/image_product.h"
+#include "products/image/calibration_converter.h"
+#include "products/image/calibration_units.h"
+#include "products/image/image_calibrator.h"
+#include "products/image_product.h"
 #include <vector>
 
 namespace satdump
@@ -71,10 +71,10 @@ namespace satdump
 
             void saveResult(std::string directory);
 
-            void addSubHandler(std::shared_ptr<Handler> handler)
+            void addSubHandler(std::shared_ptr<Handler> handler, bool ontop = false)
             {
-                // Handler::addSubHandler(handler);
-                img_handler->addSubHandler(handler);
+                // Handler::addSubHandler(handler, ontop);
+                img_handler->addSubHandler(handler, ontop);
             }
 
             void delSubHandler(std::shared_ptr<Handler> handler, bool now = false)

@@ -138,10 +138,13 @@ namespace satdump
             return has;
         }
 
-        void Handler::addSubHandler(std::shared_ptr<Handler> handler)
+        void Handler::addSubHandler(std::shared_ptr<Handler> handler, bool ontop)
         {
             subhandlers_mtx.lock();
-            subhandlers.push_back(handler);
+            if (ontop)
+                subhandlers.insert(subhandlers.begin(), &handler, &handler + 1);
+            else
+                subhandlers.push_back(handler);
             subhandlers_mtx.unlock();
         }
 
@@ -153,6 +156,15 @@ namespace satdump
 
             if (now)
                 delSubHandlersNow();
+        }
+
+        std::vector<std::shared_ptr<Handler>> Handler::getAllSubHandlers()
+        {
+            std::vector<std::shared_ptr<Handler>> sh;
+            subhandlers_mtx.lock();
+            sh = subhandlers;
+            subhandlers_mtx.unlock();
+            return sh;
         }
 
         nlohmann::json Handler::getConfig() { return {}; }

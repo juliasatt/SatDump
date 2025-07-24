@@ -12,7 +12,7 @@
 #include "logger.h"
 #include "main_ui.h"
 #include "nfd.h"
-#include "processing.h"
+// #include "processing.h"
 #include "satdump_vars.h"
 #include <exception>
 #include <filesystem>
@@ -49,29 +49,61 @@ void glfw_drop_callback(GLFWwindow *window, int count, const char **paths)
     satdump::eventBus->fire_event<satdump::imgui_utils::FileDropEvent>({files});
 }
 
-#include "nfd/include/nfd.hpp"
-#include "nfd/include/nfd_glfw3.h"
+#ifdef _WIN32
+#define WINVER 0x0501 // Allow use of features specific to Windows XP or later.
+#define _WIN32_WINNT 0x0501
+#define WIN32_LEAN_AND_MEAN
+#include "fcntl.h"
+#include "io.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "windows.h"
+#pragma comment(lib, "User32.lib")
+
+// https://www.tillett.info/2013/05/13/how-to-create-a-windows-program-that-works-as-both-as-a-gui-and-console-application/
+// Attach output of application to parent console
+static BOOL attachOutputToConsole(void)
+{
+    HANDLE consoleHandleOut, consoleHandleError;
+
+    if (AttachConsole(ATTACH_PARENT_PROCESS))
+    {
+        // Redirect unbuffered STDOUT to the console
+        consoleHandleOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (consoleHandleOut != INVALID_HANDLE_VALUE)
+        {
+            freopen("CONOUT$", "w", stdout);
+            setvbuf(stdout, NULL, _IONBF, 0);
+        }
+        else
+        {
+            return FALSE;
+        }
+        // Redirect unbuffered STDERR to the console
+        consoleHandleError = GetStdHandle(STD_ERROR_HANDLE);
+        if (consoleHandleError != INVALID_HANDLE_VALUE)
+        {
+            freopen("CONOUT$", "w", stderr);
+            setvbuf(stderr, NULL, _IONBF, 0);
+        }
+        else
+        {
+            return FALSE;
+        }
+        return TRUE;
+    }
+    // Not a console application
+    return FALSE;
+}
+#endif
 
 int main(int argc, char *argv[])
 {
+#ifdef _WIN32
+    attachOutputToConsole();
+#endif
+
     initLogger();
-
-    if (argc < 5) // Check overall command
-    {
-        logger->error("Usage : " + std::string(argv[0]) + " [downlink] [input_level] [input_file] [output_file_or_directory] [additional options as required]");
-        logger->error("Extra options (examples. Any parameter used in modules can be used here) :");
-        logger->error(" --samplerate [baseband_samplerate] --baseband_format [cf32/cs32/cs16/cs8/wav16] --dc_block --iq_swap");
-    }
-    else
-        satdump::processing::is_processing = true;
-
-    std::string downlink_pipeline = satdump::processing::is_processing ? argv[1] : "";
-    std::string input_level = satdump::processing::is_processing ? argv[2] : "";
-    std::string input_file = satdump::processing::is_processing ? argv[3] : "";
-    std::string output_file = satdump::processing::is_processing ? argv[4] : "";
-
-    // Parse flags
-    nlohmann::json parameters = satdump::processing::is_processing ? parse_common_flags(argc - 5, &argv[5]) : "";
 
     // logger->warn("\n" + parameters.dump(4));
     // exit(0);
@@ -182,21 +214,6 @@ int main(int argc, char *argv[])
     satdump::tle_do_update_on_init = false;
     satdump::initSatdump(true);
 
-    // Check if we need to start a pipeline
-    try
-    {
-        satdump::pipeline::Pipeline pipeline = satdump::pipeline::getPipelineFromID(downlink_pipeline);
-        satdump::processing::is_processing = true;
-    }
-    catch (std::exception &)
-    {
-    }
-
-    // See if we need to add arguments
-    satdump::satdump_cfg.main_cfg["cli"] = {};
-    if (argc > 1 && !satdump::processing::is_processing)
-        satdump::satdump_cfg.main_cfg["cli"] = parse_common_flags(argc - 1, &argv[1], {{"source_id", typeid(std::string)}});
-
     // Init UI
     satdump::initMainUI();
 
@@ -204,12 +221,6 @@ int main(int argc, char *argv[])
     logger->del_sink(loading_screen_sink);
     loading_screen_sink.reset();
     glfwSwapInterval(1); // Enable vsync for the rest of the program
-
-    if (satdump::processing::is_processing)
-    {
-        try_get_params_from_input_file(parameters, input_file);
-        satdump::ui_thread_pool.push([&](int) { satdump::processing::process(downlink_pipeline, input_level, input_file, output_file, parameters); });
-    }
 
     // Set window position
     int x, y, xs, ys;
@@ -282,6 +293,7 @@ int main(int argc, char *argv[])
 
     logger->info("UI Exit");
 
+#if 0
     // If we're doing live processing, we want this to kill all threads quickly. Hence don't call destructors
     if (satdump::processing::is_processing)
 #ifdef __APPLE__
@@ -289,6 +301,7 @@ int main(int argc, char *argv[])
 #else
         quick_exit(0);
 #endif
+#endif // TODOREWORKUI
 
     satdump::ui_thread_pool.stop();
 

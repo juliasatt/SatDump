@@ -6,7 +6,9 @@
             "expression": "ch2, ch2, ch1",
             "image": {
             "individual_equalize": true,
-            "geo_correct": true}
+            "geo_correct": true,
+            "autogen": true
+        }
         },
         {
             "name": 621,
@@ -30,7 +32,7 @@
             "geo_correct": true}
         },
         {
-            "name": "10.8µm Thermal IR",
+            "name": "10.8µm Thermal IR (Uncalibrated)",
             "expression": "ch4",
             "image": {
             "individual_equalize": true,

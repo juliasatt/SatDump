@@ -10,103 +10,171 @@
  * Don't judge the code you might see in there! :)
  **********************************************************************/
 
-#include "common/ccsds/ccsds_tm/mpdu.h"
+#include "core/exception.h"
+#include "init.h"
+#include "libs/miniz/miniz.h"
+#include "libs/miniz/miniz_zip.h"
 #include "logger.h"
-
-#include "common/ccsds/ccsds_tm/demuxer.h"
-#include "common/ccsds/ccsds_tm/vcdu.h"
-#include "common/simple_deframer.h"
+#include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
+#include <memory>
 
-#include "image/image.h"
-#include "image/io.h"
-#include "image/processing.h"
+class FilesIteratorItem
+{
+public:
+    const std::string name;
+    FilesIteratorItem(std::string name) : name(name) {}
+    virtual std::vector<uint8_t> getPayload() = 0;
+};
 
-#include <cstring>
+class FilesIterator
+{
+public:
+    virtual bool getNext(std::unique_ptr<FilesIteratorItem> &v) = 0;
+    virtual void reset() = 0;
+};
 
-#include "common/repack.h"
+class FolderFileIteratorItem : public FilesIteratorItem
+{
+private:
+    const std::string path;
 
-#include "image/bayer/bayer.h"
+public:
+    FolderFileIteratorItem(std::string path, std::string name) : FilesIteratorItem(name), path(path) {}
 
-#include "common/codings/reedsolomon/reedsolomon.h"
+    std::vector<uint8_t> getPayload()
+    {
+        std::vector<uint8_t> v;
+        std::ifstream f(path, std::ios::binary);
+        char c;
+        while (!f.eof())
+        {
+            f.read(&c, 1);
+            v.push_back(c);
+        }
+        f.close();
+        return v;
+    }
+};
+
+class FolderFilesIterator : public FilesIterator
+{
+private:
+    const std::string folder;
+    std::filesystem::recursive_directory_iterator filesIterator;
+    std::error_code iteratorError;
+
+public:
+    FolderFilesIterator(std::string folder) : folder(folder) { filesIterator = std::filesystem::recursive_directory_iterator(folder); }
+
+    bool getNext(std::unique_ptr<FilesIteratorItem> &v)
+    {
+        v.reset();
+
+        std::string path = filesIterator->path();
+
+        if (std::filesystem::is_regular_file(path))
+            v = std::make_unique<FolderFileIteratorItem>(path, std::filesystem::path(path).stem().string() + std::filesystem::path(path).extension().string());
+
+        filesIterator.increment(iteratorError);
+        if (iteratorError)
+            throw satdump_exception(iteratorError.message());
+
+        return filesIterator != std::filesystem::recursive_directory_iterator();
+    }
+
+    void reset() { filesIterator = std::filesystem::recursive_directory_iterator(folder); }
+};
+
+class ZipFileIteratorItem : public FilesIteratorItem
+{
+private:
+    const mz_zip_archive *zip;
+    const int num;
+
+public:
+    ZipFileIteratorItem(mz_zip_archive *zip, int num, std::string name) : FilesIteratorItem(name), zip(zip), num(num) {}
+
+    std::vector<uint8_t> getPayload()
+    {
+        size_t filesize = 0;
+        void *file_ptr = mz_zip_reader_extract_to_heap((mz_zip_archive *)&zip, num, &filesize, 0);
+        std::vector<uint8_t> vec((uint8_t *)file_ptr, (uint8_t *)file_ptr + filesize);
+        mz_free(file_ptr);
+        return vec;
+    }
+};
+
+class ZipFilesIterator : public FilesIterator
+{
+private:
+    mz_zip_archive zip{};
+    int numfiles;
+    int file_index;
+
+public:
+    ZipFilesIterator(std::string zipfile)
+    {
+        if (!mz_zip_reader_init_file(&zip, zipfile.c_str(), 0))
+            throw satdump_exception("Invalid zip file! " + zipfile);
+        numfiles = mz_zip_reader_get_num_files(&zip);
+        file_index = 0;
+    }
+
+    ~ZipFilesIterator() { mz_zip_reader_end(&zip); }
+
+    bool getNext(std::unique_ptr<FilesIteratorItem> &v)
+    {
+        v.reset();
+
+        if (mz_zip_reader_is_file_supported(&zip, file_index))
+        {
+            char filename[2000];
+            if (mz_zip_reader_get_filename(&zip, file_index, filename, 2000))
+                v = std::make_unique<ZipFileIteratorItem>(&zip, file_index, std::filesystem::path(filename).stem().string() + std::filesystem::path(filename).extension().string());
+        }
+
+        file_index++;
+
+        return file_index < numfiles;
+    }
+
+    void reset() { file_index = 0; }
+};
 
 int main(int argc, char *argv[])
 {
     initLogger();
 
-    std::ifstream data_in(argv[1], std::ios::binary);
+    logger->set_level(slog::LOG_OFF);
+    satdump::initSatdump();
+    completeLoggerInit();
+    logger->set_level(slog::LOG_TRACE);
 
-    uint8_t cadu[1279];
+    // std::unique_ptr<FilesIterator> fit = std::make_unique<FolderFilesIterator>(
+    //     "/tmp/satdump_official/W_XX-EUMETSAT-Darmstadt,IMG+SAT,MTI1+FCI-1C-RRAD-FDHSI-FD--x-x---x_C_EUMT_20250724111342_IDPFI_OPE_20250724111007_20250724111935_N__O_0068_0000 (2)");
 
-    ccsds::ccsds_tm::Demuxer vcid_demuxer(1094, true, 15, 0);
+    std::unique_ptr<FilesIterator> fit = std::make_unique<ZipFilesIterator>(
+        "/tmp/satdump_official/W_XX-EUMETSAT-Darmstadt,IMG+SAT,MTI1+FCI-1C-RRAD-FDHSI-FD--x-x---x_C_EUMT_20250724120349_IDPFI_OPE_20250724120007_20250724120935_N__O_0073_0000.zip");
 
-    std::ofstream test_t("/tmp/test.bin");
+    std::unique_ptr<FilesIteratorItem> f;
 
-    reedsolomon::ReedSolomon rs_check(reedsolomon::RS223);
-
-    std::vector<uint16_t> msi_channel;
-
-    while (!data_in.eof())
+    while (fit->getNext(f))
     {
-        // Read buffer
-        data_in.read((char *)&cadu, 1279);
-
-        // // Check RS
-        // int errors[5];
-        // rs_check.decode_interlaved(cadu, true, 5, errors);
-        // if (errors[0] < 0 || errors[1] < 0 || errors[2] < 0 || errors[3] < 0 || errors[4] < 0)
-        //     continue;
-
-        // Parse this transport frame
-        ccsds::ccsds_tm::VCDU vcdu = ccsds::ccsds_tm::parseVCDU(cadu);
-
-        // printf("VCID %d\n", vcdu.vcid);
-
-        printf("SCID %d\n", vcdu.spacecraft_id);
-
-        if (vcdu.vcid != 7)
+        if (f)
         {
-#if 0
-            auto pkts = vcid_demuxer.work(cadu);
 
-            for (auto pkt : pkts)
+            uint32_t test1, test2, test3;
+            if (sscanf(f->name.c_str(), "W_XX-EUMETSAT-Darmstadt,IMG+SAT,MTI%*d+FCI-1C-RRAD-FDHSI-FD--CHK-BODY---NC4E_C_EUMT_%14u_IDPFI_OPE_%14u_%14u_N__O_%*d_%*d.nc", &test1, &test2, &test3) == 3)
             {
-                printf("APID %d \n", pkt.header.apid);
-                if (pkt.header.apid == 1228)
-                {
-                    // 1027 ?
-                    // 1028 ?
-                    // 1031 !!!!!
-                    // 1032 !!!!!
-
-                    //  printf("APID %d SIZE %d\n", pkt.header.apid, pkt.payload.size());
-
-                    pkt.payload.resize(3000);
-
-                    int id = pkt.payload[23];
-
-                    if (id == 0)
-                    {
-                        test_t.write((char *)pkt.header.raw, 6);
-                        test_t.write((char *)pkt.payload.data(), pkt.payload.size());
-
-                        for (int i = 0; i < 218; i++)
-                        {
-                            uint16_t val = pkt.payload[28 + i * 2 + 0] << 8 | pkt.payload[28 + i * 2 + 1];
-                            msi_channel.push_back(val);
-                        }
-                    }
-                }
+                logger->trace(f->name + " MTG FCI Images");
             }
-#endif
-
-            // auto mpdu = ccsds::ccsds_tm::parseMPDU(cadu, false, 0, 15);
-            // if (mpdu.first_header_pointer == 0)
-            test_t.write((char *)cadu, 1279);
+            else
+            {
+                logger->info(f->name);
+            }
         }
     }
-
-    image::Image img(msi_channel.data(), 16, 218, msi_channel.size() / 218, 1);
-    image::save_png(img, "test_earthcare.png");
 }

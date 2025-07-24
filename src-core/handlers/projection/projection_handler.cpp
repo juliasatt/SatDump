@@ -1,5 +1,7 @@
 #include "projection_handler.h"
+#include "core/config.h"
 #include "core/style.h"
+#include "handlers/vector/addmenu.h"
 #include "image/image.h"
 #include "image/meta.h"
 #include "logger.h"
@@ -23,15 +25,22 @@ namespace satdump
         {
             handler_tree_icon = u8"\uf6e6";
             setCanSubBeReorgTo(true);
+
+            if (!satdump_cfg.main_cfg["user"]["projection_defaults"].is_null())
+                setConfig(satdump_cfg.main_cfg["user"]["projection_defaults"]);
         }
 
-        ProjectionHandler::~ProjectionHandler() {}
+        ProjectionHandler::~ProjectionHandler()
+        {
+            satdump_cfg.main_cfg["user"]["projection_defaults"] = getConfig();
+            satdump_cfg.saveUser();
+        }
 
         void ProjectionHandler::drawMenu()
         {
             bool needs_to_be_disabled = is_processing;
 
-            if (ImGui::CollapsingHeader("Projection"))
+            if (ImGui::CollapsingHeader("Projection", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 if (needs_to_be_disabled)
                     style::beginDisabled();
@@ -60,6 +69,8 @@ namespace satdump
         {
             if (p.contains("image"))
                 img_handler.setConfig(p["image"]);
+            if (p.contains("proj"))
+                projui = p["proj"];
         }
 
         nlohmann::json ProjectionHandler::getConfig()
@@ -67,6 +78,7 @@ namespace satdump
             nlohmann::json p;
 
             p["image"] = img_handler.getConfig();
+            p["proj"] = projui;
 
             return p;
         }
@@ -449,14 +461,16 @@ namespace satdump
         void ProjectionHandler::drawMenuBar()
         {
             img_handler.drawSaveMenu(); // TODOREWORK remove this
-            /*if (ImGui::MenuItem("Image To Handler"))
-            {
-                std::shared_ptr<ImageHandler> a = std::make_shared<ImageHandler>();
-                a->setConfig(img_handler.getConfig());
-                a->updateImage(img_handler.image);
-                addSubHandler(a);
-            }*/
-            // TODOREWORK
+                                        /*if (ImGui::MenuItem("Image To Handler"))
+                                        {
+                                            std::shared_ptr<ImageHandler> a = std::make_shared<ImageHandler>();
+                                            a->setConfig(img_handler.getConfig());
+                                            a->updateImage(img_handler.image);
+                                            addSubHandler(a);
+                                        }*/
+                                        // TODOREWORK
+
+            renderVectorOverlayMenu(this);
         }
 
         void ProjectionHandler::drawContents(ImVec2 win_size) { img_handler.drawContents(win_size); }

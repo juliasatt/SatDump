@@ -4,6 +4,7 @@
 #include "core/resources.h"
 #include "imgui/imgui_stdlib.h"
 #include "logger.h"
+#include "nlohmann/json.hpp"
 #include "nlohmann/json_utils.h"
 #include "utils/string.h"
 #include "utils/time.h"
@@ -25,6 +26,33 @@ namespace satdump
                     instrument_cfg = loadJsonFile(resources::getResourcePath(config_path));
                     if (instrument_cfg.contains("name"))
                         handler_name = instrument_cfg["name"];
+
+                    std::filesystem::recursive_directory_iterator commonIterator(resources::getResourcePath("instrument_cfgs/common"));
+                    std::error_code iteratorError;
+                    while (commonIterator != std::filesystem::recursive_directory_iterator())
+                    {
+                        std::string path = commonIterator->path().string();
+                        if (std::filesystem::is_regular_file(commonIterator->path()))
+                        {
+                            try
+                            {
+                                auto additional_presets = loadJsonFile(path);
+                                auto instr = additional_presets["instruments"].get<std::vector<std::string>>();
+
+                                if (std::find_if(instr.begin(), instr.end(), [&](const std::string &el) { return el == p->instrument_name; }) != instr.end())
+                                    for (nlohmann::ordered_json p : additional_presets["presets"])
+                                        instrument_cfg["presets"].push_back(p);
+                            }
+                            catch (std::exception &e)
+                            {
+                                logger->error("Common instrument configuration (" + path + ") invalid! %s", e.what());
+                            }
+                        }
+
+                        commonIterator.increment(iteratorError);
+                        if (iteratorError)
+                            logger->critical(iteratorError.message());
+                    }
                 }
                 catch (std::exception &e)
                 {
@@ -36,6 +64,11 @@ namespace satdump
                 logger->warn("Couldn't open instrument configuration at " + config_path + ". Expect degraded experience.");
                 handler_name = product->instrument_name;
             }
+
+            // Sort in alphabetical order (to make lego11 happy)
+            if (!instrument_cfg["presets"].is_null())
+                std::sort(instrument_cfg["presets"].begin(), instrument_cfg["presets"].end(),
+                          [&](const nlohmann::ordered_json &a, const nlohmann::ordered_json &b) { return a["name"].get<std::string>() < b["name"].get<std::string>(); });
 
             if (!dataset_mode && p->has_product_source())
                 handler_name = p->get_product_source() + " " + handler_name;

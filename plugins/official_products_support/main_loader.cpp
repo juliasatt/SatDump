@@ -15,6 +15,8 @@ namespace
     std::unique_ptr<satdump::ArchiveLoader> _loader = nullptr;
 } // namespace
 
+void provideExplorerFileLoader(const satdump::explorer::ExplorerRequestFileLoad &evt);
+
 class OfficalProductsLoaderSupport : public satdump::Plugin
 {
 public:
@@ -23,7 +25,8 @@ public:
     void init()
     {
         satdump::eventBus->register_handler<satdump::config::RegisterPluginConfigHandlersEvent>(registerConfigHandler);
-        satdump::eventBus->register_handler<satdump::explorer::ExplorerApplication::RenderLoadMenuElementsEvent>(renderExplorerLoaderButton);
+        satdump::eventBus->register_handler<satdump::explorer::RenderLoadMenuElementsEvent>(renderExplorerLoaderButton);
+        satdump::eventBus->register_handler<satdump::explorer::ExplorerRequestFileLoad>(provideExplorerFileLoader);
 
         if (satdump::satdump_cfg.main_cfg.contains("plugin_settings") && satdump::satdump_cfg.main_cfg["plugin_settings"].contains("official_products"))
             if (satdump::satdump_cfg.main_cfg["plugin_settings"]["official_products"].contains("enable_loader"))
@@ -61,11 +64,11 @@ public:
 
         ImGui::Checkbox("Enable Loader", &_enable_loader);
 
-        ImGui::Text("EUMETSAT User Credentials Key");
+        ImGui::Text("EUMETSAT User «Consumer Key»");
         ImGui::SameLine();
         ImGui::InputText("##eumetsattokenloader_key", &_loader->eumetsat_user_consumer_credential);
 
-        ImGui::Text("EUMETSAT User Credentials Secret");
+        ImGui::Text("EUMETSAT User «Consumer Secret»");
         ImGui::SameLine();
         ImGui::InputText("##eumetsattokenloader_secret", &_loader->eumetsat_user_consumer_secret);
     }
@@ -81,7 +84,7 @@ public:
         cfg["enable_loader"] = _enable_loader;
     }
 
-    static void renderExplorerLoaderButton(const satdump::explorer::ExplorerApplication::RenderLoadMenuElementsEvent &evt)
+    static void renderExplorerLoaderButton(const satdump::explorer::RenderLoadMenuElementsEvent &evt)
     {
         if (!_enable_loader)
             return;

@@ -10,18 +10,12 @@
         },
         {
             "name": "ABI Visible False Color",
-            "expression": "cch1=(1, albedo, 0.000000, 1.000000);cch2=(2, albedo, 0.000000, 1.000000);cch3=(3, albedo, 0.000000, 1.000000);cch2^0.45454545454,(cch2^0.45454545454)*0.45+(cch3^0.45454545454)*0.1+(cch1^0.45454545454)*0.45,cch1^0.45454545454"
+            "expression": "cch1=(1, albedo, 0.000000, 1.000000);cch2=(2, albedo, 0.000000, 1.000000);cch3=(3, albedo, 0.000000, 1.000000);cch2^0.45454545454,(cch2^0.45454545454)*0.45+(cch3^0.45454545454)*0.1+(cch1^0.45454545454)*0.45,cch1^0.45454545454",
+            "autogen": true
         },
         {
             "name": "ABI False Color IR Merge",
             "expression": "bm=equp(maps/nasa_night.jpg);\nlut2=lut(lut/goes/abi/wxstar/ch2_curve.png);\nlut=lut(lut/goes/abi/usradioguycustomlut.png);\ns=(2, sun_angle, 0.000000, 8.000000);\n(lut(ch13, lut2(ch2, 0, 0), 0)) * s + (ch13 * (ch13) + (1-ch13) * bm(0)) * (1-s),\n(lut(ch13, lut2(ch2, 0, 0), 1)) * s + (ch13 * (ch13) + (1-ch13) * bm(1)) * (1-s),\n(lut(ch13, lut2(ch2, 0, 0), 2)) * s + (ch13 * (ch13) + (1-ch13) * bm(2)) * (1-s)"
-        },
-        {
-            "name": "Night Fog Difference",
-            "expression": "cch7=(7, brightness_temperature, 163.000000, 300.000000);\ncch13=(13, brightness_temperature, 163.000000, 300.000000);\nval=(cch13 - cch7 - numerator) / denominator;\nnumerator=minval/input_range;\ndenominator=(maxval-minval)/input_range;\nminval=-16;\nmaxval=16;\ninput_range=137;\nlut=lut(lut/cal/fog_btd.png);\nlut(val, 0, 0),\nlut(val, 0, 1),\nlut(val, 0, 2)",
-            "image": {
-                "remove_background": true
-            }
         },
         {
             "name": "Day Cloud Phase Distinction",
@@ -190,7 +184,7 @@
             "expression": "lut=lut(lut/goes/abi/L2/lst_tmbates.png);lut(chLST, 0, 0),lut(chLST, 0, 1),lut(chLST, 0, 2)"
         },
         {
-            "name": "Sea Surface Temperature",
+            "name": "Sea Surface Temperature (GOES L2)",
             "expression": "lut=lut(lut/goes/abi/L2/sst.png);lut(chSST, 0, 0),lut(chSST, 0, 1),lut(chSST, 0, 2)"
         },
         {
@@ -219,12 +213,6 @@
         {
             "name": "SST Transparent (tmbates)",
             "expression": "lut=lut(lut/goes/abi/L2/sst_transparent_tmbates.png);lut(chSST, 0, 0),lut(chSST, 0, 1),lut(chSST, 0, 2),lut(chSST, 0, 3)"
-        },        {
-        "name": "Automatic IR False Color",
-            "expression": "IR11=(13, brightness_temperature_celsius, -60, 40);lm=equp(maps/landmask.png);land=lut(lut/2dfc/2dfc_ir_land.png);sea=lut(lut/2dfc/2dfc_ir_sea.png);lm(0) == 1 ? land(IR11, 0, 0) : sea(IR11, 0, 0),lm(0) == 1 ? land(IR11, 0, 1) : sea(IR11, 0, 1),lm(0) == 1 ? land(IR11, 0, 2) : sea(IR11, 0, 2)",
-            "image": {
-                "geo_correct": true
-            }
         }
     ],
     "default": {

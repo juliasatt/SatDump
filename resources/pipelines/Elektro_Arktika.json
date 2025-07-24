@@ -2,6 +2,12 @@
     "elektro_rdas": {
         "name": "ELEKTRO-L RDAS",
         "samplerate": 45e6,
+        "frequencies": [
+            [
+                "RDAS",
+                7500e6
+            ]
+        ],
         "work": {
             "baseband": {},
             "soft": {
@@ -34,6 +40,12 @@
     "arktika_rdas": {
         "name": "ARKTIKA-M RDAS",
         "samplerate": 45e6,
+        "frequencies": [
+            [
+                "RDAS",
+                7865e6
+            ]
+        ],
         "work": {
             "baseband": {},
             "soft": {
@@ -191,7 +203,7 @@
                 "module": "pm_demod",
                 "parameters": {
                     "symbolrate": 5e3,
-                    "pll_bw": 0.01,
+                    "pll_bw": 0.02,
                     "rrc_alpha": 0.5
                 }
             },
@@ -226,7 +238,7 @@
                 "module": "pm_demod",
                 "parameters": {
                     "symbolrate": 5e3,
-                    "pll_bw": 0.01,
+                    "pll_bw": 0.02,
                     "rrc_alpha": 0.5
                 }
             },

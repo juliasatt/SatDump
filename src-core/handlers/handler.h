@@ -105,14 +105,21 @@ namespace satdump
             /**
              * @brief Add a new subhandler
              * @param handler the handler to add
+             * @param ontop if true, adds the handler at the start of the list
              */
-            virtual void addSubHandler(std::shared_ptr<Handler> handler);
+            virtual void addSubHandler(std::shared_ptr<Handler> handler, bool ontop = false);
 
             /**
              * @brief Delete a subhandler
              * @param handler the handler to delete
              */
             virtual void delSubHandler(std::shared_ptr<Handler> handler, bool now = false);
+
+            /**
+             * @brief Get all current subhandlers
+             * @return List of all subhandlers
+             */
+            virtual std::vector<std::shared_ptr<Handler>> getAllSubHandlers();
 
             /**
              * @brief Set if a handler can be dragged around in the tree

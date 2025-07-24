@@ -1,7 +1,10 @@
 #include "shapefile_handler.h"
 
 #include "core/config.h"
+#include "core/resources.h"
 #include "dbf_file/dbf_file.h"
+#include "image/text.h"
+#include "imgui/imgui.h"
 #include "logger.h"
 
 #include "core/style.h"
@@ -26,6 +29,7 @@ namespace satdump
             {
                 dbf_file = dbf_file::readDbfFile(db);
                 logger->critical("JSON : \n%s\n", dbf_file.dump(4).c_str());
+                has_dbf = true;
             }
 
             if (!satdump_cfg.main_cfg["user"]["shapefile_defaults"][std::filesystem::path(shapefile_name).stem().string()].is_null())
@@ -40,9 +44,12 @@ namespace satdump
 
         void ShapefileHandler::drawMenu()
         {
-            if (ImGui::CollapsingHeader("Settings"))
+            if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::ColorEdit3("##shapefilecolor##Color", (float *)&color_to_draw, ImGuiColorEditFlags_NoInputs /*| ImGuiColorEditFlags_NoLabel*/);
+                ImGui::ColorEdit3("Draw Color##shapefilecolor", (float *)&color_to_draw, ImGuiColorEditFlags_NoInputs /*| ImGuiColorEditFlags_NoLabel*/);
+                ImGui::InputInt("Font Size", &font_size);
+                if (has_dbf)
+                    ImGui::InputInt("Scale Rank (Cities Only)", &scalerank_filter);
             }
         }
 
@@ -64,10 +71,13 @@ namespace satdump
                         }
 
                         std::string shapeID = "Polygon " + std::to_string(num);
-                        if (dbf_file[num]["NAME_1"].is_string())
-                            shapeID = dbf_file[num]["NAME_1"];
-                        if (dbf_file[num]["name"].is_string())
-                            shapeID = dbf_file[num]["name"];
+                        if (has_dbf)
+                        {
+                            if (dbf_file[num]["NAME_1"].is_string())
+                                shapeID = dbf_file[num]["NAME_1"];
+                            if (dbf_file[num]["name"].is_string())
+                                shapeID = dbf_file[num]["name"];
+                        }
 
                         ImPlot::PlotLine(shapeID.c_str(), line_x.data(), line_y.data(), line_x.size());
                     }
@@ -76,10 +86,13 @@ namespace satdump
                 auto pointDraw = [this](shapefile::point_t coordinates, int num)
                 {
                     std::string shapeID = "Point " + std::to_string(num);
-                    if (dbf_file[num]["NAME_1"].is_string())
-                        shapeID = dbf_file[num]["NAME_1"];
-                    if (dbf_file[num]["name"].is_string())
-                        shapeID = dbf_file[num]["name"];
+                    if (has_dbf)
+                    {
+                        if (dbf_file[num]["NAME_1"].is_string())
+                            shapeID = dbf_file[num]["NAME_1"];
+                        if (dbf_file[num]["name"].is_string())
+                            shapeID = dbf_file[num]["name"];
+                    }
 
                     ImPlot::PlotScatter(shapeID.c_str(), &coordinates.x, &coordinates.y, 1);
                 };
@@ -111,12 +124,18 @@ namespace satdump
                 color_to_draw.z = c[2];
                 color_to_draw.w = c[3];
             }
+            if (p.contains("font_size"))
+                font_size = p["font_size"];
+            if (p.contains("scalerank_filter"))
+                scalerank_filter = p["scalerank_filter"];
         }
 
         nlohmann::json ShapefileHandler::getConfig()
         {
             nlohmann::json p;
             p["color"] = {color_to_draw.x, color_to_draw.y, color_to_draw.z, color_to_draw.w};
+            p["font_size"] = font_size;
+            p["scalerank_filter"] = scalerank_filter;
             return p;
         }
 
@@ -128,8 +147,11 @@ namespace satdump
             // TODOREWORK
             std::vector<double> color = {color_to_draw.x, color_to_draw.y, color_to_draw.z, color_to_draw.w};
 
+            image::TextDrawer text_drawer;
+            text_drawer.init_font(resources::getResourcePath("fonts/font.ttf"));
+
             {
-                std::function<void(std::vector<std::vector<shapefile::point_t>>)> polylineDraw = [color, &img, &projectionFunc](std::vector<std::vector<shapefile::point_t>> parts)
+                std::function<void(std::vector<std::vector<shapefile::point_t>>, int num)> polylineDraw = [color, &img, &projectionFunc](std::vector<std::vector<shapefile::point_t>> parts, int num)
                 {
                     int width = img.width();
                     int height = img.height();
@@ -148,28 +170,53 @@ namespace satdump
                     }
                 };
 
-                std::function<void(shapefile::point_t)> pointDraw = [color, &img, &projectionFunc](shapefile::point_t coordinates)
+                std::function<void(shapefile::point_t, int num)> pointDraw = [this, color, &text_drawer, &img, &projectionFunc](shapefile::point_t coordinates, int num)
                 {
                     std::pair<double, double> cc = projectionFunc(coordinates.y, coordinates.x, img.height(), img.width());
 
                     if (cc.first == -1 || cc.second == -1)
                         return;
 
-                    img.draw_pixel(cc.first, cc.second, color);
+                    if (has_dbf)
+                    {
+                        if (dbf_file[num]["scalerank"].is_string())
+                            if (scalerank_filter < std::stoi(dbf_file[num]["scalerank"].get<std::string>()))
+                                return;
+                    }
+
+#if 0
+                     img.draw_pixel(cc.first, cc.second, color);
+#else
+                    img.draw_line(cc.first - font_size * 0.3, cc.second - font_size * 0.3, cc.first + font_size * 0.3, cc.second + font_size * 0.3, color);
+                    img.draw_line(cc.first + font_size * 0.3, cc.second - font_size * 0.3, cc.first - font_size * 0.3, cc.second + font_size * 0.3, color);
+                    img.draw_circle(cc.first, cc.second, 0.15 * font_size, color, true);
+
+                    std::string shapeID;
+                    if (has_dbf)
+                    {
+                        if (dbf_file[num]["NAME_1"].is_string())
+                            shapeID = dbf_file[num]["NAME_1"];
+                        if (dbf_file[num]["name"].is_string())
+                            shapeID = dbf_file[num]["name"];
+                    }
+
+                    if (shapeID.size())
+                        text_drawer.draw_text(img, cc.first, cc.second + font_size * 0.15, color, font_size, shapeID);
+#endif
                 };
 
                 for (shapefile::PolyLineRecord &polylineRecord : file->polyline_records)
-                    polylineDraw(polylineRecord.parts_points);
+                    polylineDraw(polylineRecord.parts_points, polylineRecord.record_number - 1);
 
                 for (shapefile::PolygonRecord &polygonRecord : file->polygon_records)
-                    polylineDraw(polygonRecord.parts_points);
+                    polylineDraw(polygonRecord.parts_points, polygonRecord.record_number - 1);
 
                 for (shapefile::PointRecord &pointRecord : file->point_records)
-                    pointDraw(pointRecord.point);
+                    pointDraw(pointRecord.point, pointRecord.record_number - 1);
 
                 for (shapefile::MultiPointRecord &multipointRecord : file->multipoint_records)
                     for (shapefile::point_t p : multipointRecord.points)
-                        pointDraw(p);
+                        pointDraw(p, multipointRecord.record_number - 1);
             }
         }
     } // namespace handlers
