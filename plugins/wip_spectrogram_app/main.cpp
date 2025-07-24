@@ -21,7 +21,7 @@ public:
             if (ImGui::BeginMenu("Tools"))
             {
                 if (ImGui::MenuItem("Spectrogram App"))
-                    evt.master_handler->addSubHandler(std::make_shared<satdump::spectrogram::SpectrogramHandler>());
+                    evt.master_handler->addSubHandler(std::make_shared<satdump::SpectrogramHandler>());
                 ImGui::EndMenu();
             }
 
