@@ -1,8 +1,10 @@
 #include "spectrogram.h"
 #include "common/geodetic/wgs84.h"
+#include "image/image.h"
 #include "imgui/imgui.h"
 #include "spectrogram_container.h"
 #include "tools/spectrogram_image.h"
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -44,12 +46,12 @@ namespace satdump
          * :)
          */
 
-        // file_save_menu.getimg_callback = [this]()
-        // {
-        //     auto img = std::make_shared<image::Image>();
-        //     *img = generateLutImage();
-        //     return img;
-        // };
+        image_save_menu.getimg_callback = [this]()
+        {
+            auto img = std::make_shared<image::Image>();
+            *img = genImage();
+            return img;
+        };
 
         {
             palettes_str = "";
@@ -75,7 +77,7 @@ namespace satdump
         // file_opts = std::make_shared<ndsp::OptDisplayerWarper>(file_source);
 
         fft_gen->link(file_source.get(), 0, 0, 4);
-        fft_gen->on_fft_gen_floats = [this](float *p) { push_tmp_floats(p); };
+        fft_gen->on_fft_gen_floats = [this](float *p) { push_fft_floats(p); };
     }
 
     SpectrogramHandler::~SpectrogramHandler()
@@ -168,78 +170,26 @@ namespace satdump
         return true;
     }
 
-    void SpectrogramHandler::push_tmp_floats(float *values)
-    {
-        // float *vf = values;
-
-        uint8_t *ptr = current_spectrogram_container->get_ptr();
-        size_t size = current_spectrogram_container->get_ptr_size();
-
-        char name[1000];
-        tmpnam(name);
-        std::string tmpfile = name;
-        std::ofstream file_out(tmpfile, std::ios::binary);
-
-        float *tmp_floats = nullptr;
-        size_t current_ptr_size = 0;
-        current_ptr_size++;
-
-        // file_out.write((char *)&vf, current_ptr_size * sizeof(float));
-        if (textureID == 0 || textureBuffer == nullptr)
-            return;
-
-        if ((fft_img_i++ % fft_img_i_mod) == 0)
-        {
-            if (fft_img_i * 5e6 == fft_img_i_mod)
-                fft_img_i = 0;
-
-            memmove(&textureBuffer[x_pos * 1], &textureBuffer[x_pos * 0], x_pos * (y_pos - 1) * sizeof(uint32_t));
-
-            double fz = (double)fft_size / (double)x_pos;
-            for (int i = 0; i < x_pos; i++)
-            {
-                float fft_pos = i * fz;
-
-                if (fft_pos >= fft_size)
-                    fft_pos = fft_size - 1;
-
-                float final = -INFINITY;
-                for (float v = fft_pos; v < fft_pos + 1; v += 1)
-                    if (final < values[(int)floor(v)])
-                        final = values[(int)floor(v)];
-
-                int v = ((final - scale_min) / fabs(scale_max - scale_min)) * resolution;
-
-                if (v < 0)
-                    v = 0;
-                if (v >= resolution)
-                    v = resolution - 1;
-
-                current_ptr_size++;
-
-                tmp_floats[i] = palette[v];
-                textureBuffer[i] = palette[v];
-                file_out.write((char *)tmp_floats, current_ptr_size * sizeof(float));
-            }
-            has_to_update = true;
-        }
-        file_out.close();
-
-        std::shared_ptr<satdump::SpectrogramContainer> newfloatc = std::make_shared<satdump::SpectrogramContainer>(current_spectrogram_container->getName() + " Flaots", tmpfile);
-        newfloatc->d_isTmp = false;
-        // newfloatc->doUpdateTextures();
-        if (current_spectrogram_container->spectrogram != nullptr)
-            ((SpectrogramHandler *)current_spectrogram_container->spectrogram)->addSubHandler(std::make_shared<SpectrogramHandler>(newfloatc));
-        else
-            logger->error("Can't add container!");
-    }
-
-    // void SpectrogramHandler::push_fft_floats(float *values)
+    // void SpectrogramHandler::push_tmp_floats(float *values)
     // {
+    //     // float *vf = values;
+    //
+    //     uint8_t *ptr = current_spectrogram_container->get_ptr();
+    //     size_t size = current_spectrogram_container->get_ptr_size();
+    //
+    //     char name[1000];
+    //     tmpnam(name);
+    //     std::string tmpfile = name;
+    //     std::ofstream file_out(tmpfile, std::ios::binary);
+    //
+    //     float *tmp_floats = nullptr;
+    //     size_t current_ptr_size = 0;
+    //     current_ptr_size++;
+    //
+    //     // file_out.write((char *)&vf, current_ptr_size * sizeof(float));
     //     if (textureID == 0 || textureBuffer == nullptr)
     //         return;
     //
-    //     work_mtx.lock();
     //     if ((fft_img_i++ % fft_img_i_mod) == 0)
     //     {
     //         if (fft_img_i * 5e6 == fft_img_i_mod)
@@ -267,14 +217,66 @@ namespace satdump
     //             if (v >= resolution)
     //                 v = resolution - 1;
     //
-    //             textureBuffer[i] = palette[v];
-    //         }
+    //             current_ptr_size++;
     //
+    //             tmp_floats[i] = palette[v];
+    //             textureBuffer[i] = palette[v];
+    //             file_out.write((char *)tmp_floats, current_ptr_size * sizeof(float));
+    //         }
     //         has_to_update = true;
     //     }
+    //     file_out.close();
     //
-    //     work_mtx.unlock();
+    //     std::shared_ptr<satdump::SpectrogramContainer> newfloatc = std::make_shared<satdump::SpectrogramContainer>(current_spectrogram_container->getName() + " Flaots", tmpfile);
+    //     newfloatc->d_isTmp = false;
+    //     // newfloatc->doUpdateTextures();
+    //     if (current_spectrogram_container->spectrogram != nullptr)
+    //         ((SpectrogramHandler *)current_spectrogram_container->spectrogram)->addSubHandler(std::make_shared<SpectrogramHandler>(newfloatc));
+    //     else
+    //         logger->error("Can't add container!");
     // }
+
+    void SpectrogramHandler::push_fft_floats(float *values)
+    {
+        if (textureID == 0 || textureBuffer == nullptr)
+            return;
+
+        work_mtx.lock();
+        if ((fft_img_i++ % fft_img_i_mod) == 0)
+        {
+            if (fft_img_i * 5e6 == fft_img_i_mod)
+                fft_img_i = 0;
+
+            memmove(&textureBuffer[x_pos * 1], &textureBuffer[x_pos * 0], x_pos * (y_pos - 1) * sizeof(uint32_t));
+
+            double fz = (double)fft_size / (double)x_pos;
+            for (int i = 0; i < x_pos; i++)
+            {
+                float fft_pos = i * fz;
+
+                if (fft_pos >= fft_size)
+                    fft_pos = fft_size - 1;
+
+                float final = -INFINITY;
+                for (float v = fft_pos; v < fft_pos + 1; v += 1)
+                    if (final < values[(int)floor(v)])
+                        final = values[(int)floor(v)];
+
+                int v = ((final - scale_min) / fabs(scale_max - scale_min)) * resolution;
+
+                if (v < 0)
+                    v = 0;
+                if (v >= resolution)
+                    v = resolution - 1;
+
+                textureBuffer[i] = palette[v];
+            }
+
+            has_to_update = true;
+        }
+
+        work_mtx.unlock();
+    }
 
     void SpectrogramHandler::set_rate(int input_rate, int output_rate)
     {
@@ -426,11 +428,11 @@ namespace satdump
                 ImGui::Spacing();
                 ImGui::ProgressBar(process_progress);
             }
-            // if (ImGui::Button("Generate"))
-            // {
-            //     is_busy = true;
-            //     process();
-            // }
+            if (ImGui::Button("Generate"))
+            {
+                is_busy = true;
+                process();
+            }
             ImGui::Separator();
         }
 
@@ -441,6 +443,26 @@ namespace satdump
         // if (is_busy)
         //     prog = (float)file_source->d_progress; // TODOREWORK make it so we actually use the progress of the WHOLE plugin, not just the file_source progress
         // ImGui::ProgressBar(prog);
+    }
+
+    image::Image SpectrogramHandler::genImage()
+    {
+        image::Image SpecImg(16, fft_size, nLines, 4);
+        for (size_t x = 0; x < fft_size; x++)
+        {
+            for (size_t y = 0; y < nLines; y++)
+            {
+                SpecImg.set(0, x, y, spec_img[x].r);
+                SpecImg.set(1, x, y, spec_img[x].g);
+                SpecImg.set(2, x, y, spec_img[x].b);
+                SpecImg.set(3, x, y, spec_img[x].a);
+                // SpecImg.set(0, x, y, textureBuffer[x]);
+                // SpecImg.set(1, x, y, textureBuffer[x]);
+                // SpecImg.set(2, x, y, textureBuffer[x]);
+                // SpecImg.set(3, x, y, textureBuffer[x]);
+            }
+        }
+        return SpecImg;
     }
 
     void SpectrogramHandler::drawMenuBar()
@@ -458,10 +480,10 @@ namespace satdump
 
         if (textureID == 0 || is_busy)
         {
-            x_pos = fft_size;
-            y_pos = nLines;
-            // x_pos = window_size.x > fft_size ? fft_size : window_size.x;
-            // y_pos = window_size.y > nLines ? nLines : window_size.y;
+            // x_pos = fft_size;
+            // y_pos = nLines;
+            x_pos = window_size.x > fft_size ? fft_size : window_size.x;
+            y_pos = window_size.y > nLines ? nLines : window_size.y;
         }
         if (textureID == 0)
         {
@@ -488,17 +510,18 @@ namespace satdump
         }
         work_mtx.unlock();
 
-        ImPlot::BeginPlot("##Baseband Spectrogram", window_size);
-        ImPlot::GetStyle().UseISO8601 = true;
-        ImPlot::GetStyle().Use24HourClock = true;
-        ImPlot::SetupAxes("Samples", "Time", ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_Invert | ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0, samplerate);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, 0, seconds);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
-        ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Time);
-        ImPlot::SetupAxisTicks(ImAxis_Y1, timestamp, timestampAndDuration, seconds);
-        ImPlot::PlotImage("Spectrogram", (void *)(intptr_t)textureID, ImVec2(0, 0), ImVec2(samplerate, seconds));
-        ImPlot::EndPlot();
+        ImGui::Image((void *)(intptr_t)textureID, window_size);
+        // ImPlot::BeginPlot("##Baseband Spectrogram", window_size);
+        // ImPlot::GetStyle().UseISO8601 = true;
+        // ImPlot::GetStyle().Use24HourClock = true;
+        // ImPlot::SetupAxes("Samples", "Time", ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_Invert | ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
+        // ImPlot::SetupAxisLimits(ImAxis_X1, 0, samplerate);
+        // ImPlot::SetupAxisLimits(ImAxis_Y1, 0, seconds);
+        // ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
+        // ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Time);
+        // ImPlot::SetupAxisTicks(ImAxis_Y1, timestamp, timestampAndDuration, seconds);
+        // ImPlot::PlotImage("Spectrogram", (void *)(intptr_t)textureID, ImVec2(0, 0), ImVec2(samplerate, seconds));
+        // ImPlot::EndPlot();
     }
 
 } // namespace satdump

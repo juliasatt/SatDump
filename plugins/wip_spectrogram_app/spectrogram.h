@@ -13,6 +13,7 @@
 #include "dsp/io/file_source.h"
 #include "dsp/io/iq_types.h"
 #include "handlers/handler.h"
+#include "image/image.h"
 #include "imgui/dialogs/widget.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_image.h"
@@ -54,6 +55,8 @@ namespace satdump
 
         bool buffer_alloc(size_t size);
 
+        image::Image genImage();
+
     private:
         // Spectrogram image specific thingies :3
         bool has_to_update = false;
@@ -80,6 +83,18 @@ namespace satdump
         int last_y_pos = 0;
         int x_pos;
         int y_pos;
+
+    private:
+        struct ColorPX
+        {
+            uint8_t r = 0;
+            uint8_t g = 0;
+            uint8_t b = 0;
+            uint8_t a = 255;
+        };
+
+        ColorPX current_col;
+        std::vector<ColorPX> spec_img;
 
     private:
         // FileSelectWidget select_baseband_dialog = FileSelectWidget("File", "Select File", false, true);
