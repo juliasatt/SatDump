@@ -10,7 +10,8 @@ namespace generic_analog
         enum ModulationType : int
         {
             AM,
-            NFM
+            NFM,
+            USB
         };
 
     protected:

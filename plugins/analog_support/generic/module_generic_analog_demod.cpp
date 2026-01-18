@@ -2,8 +2,10 @@
 #include "common/audio/audio_sink.h"
 #include "common/dsp/io/wav_writer.h"
 #include "core/config.h"
+#include "dsp/utils/freq_shift.h"
 #include "imgui/imgui.h"
 #include "logger.h"
+#include <cmath>
 #include <volk/volk.h>
 
 namespace generic_analog
@@ -43,6 +45,10 @@ namespace generic_analog
             else if (mod == "AM")
             {
                 modulation_type = ModulationType::AM;
+            }
+            else if (mod == "USB")
+            {
+                modulation_type = ModulationType::USB;
             }
         }
     }
@@ -163,7 +169,10 @@ namespace generic_analog
                 nout = quad_demod.process(work_buffer_complex, nout, work_buffer_float);
             else if (modulation_type == ModulationType::AM)
                 volk_32fc_magnitude_32f((float *)work_buffer_float, (lv_32fc_t *)work_buffer_complex, nout);
-
+            else if (modulation_type == ModulationType::USB)
+            {
+            }
+                
             // Into const
             constellation.pushFloatAndGaussian(work_buffer_float, nout);
 
@@ -281,12 +290,11 @@ namespace generic_analog
             ImGui::RadioButton("NFM##analogoption", reinterpret_cast<int *>(&modulation_type), ModulationType::NFM);
             ImGui::SameLine();
             ImGui::RadioButton("AM##analogoption", reinterpret_cast<int *>(&modulation_type), ModulationType::AM);
+            ImGui::RadioButton("USB##analogoption", reinterpret_cast<int *>(&modulation_type), ModulationType::USB);
             style::beginDisabled();
-            ImGui::RadioButton("WFM##analogoption", false);
             ImGui::SameLine();
-            ImGui::RadioButton("USB##analogoption", false);
+            ImGui::RadioButton("WFM##analogoption", false);
             ImGui::RadioButton("LSB##analogoption", false);
-            // ImGui::SameLine();
             ImGui::SameLine();
             ImGui::RadioButton("CW##analogoption", false);
             style::endDisabled();
