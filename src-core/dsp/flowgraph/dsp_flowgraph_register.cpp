@@ -10,6 +10,7 @@
 #include "dsp/filter/rrc.h"
 #include "dsp/flowgraph/dsp_flowgraph_handler.h"
 #include "dsp/flowgraph/flowgraph.h"
+#include "dsp/flowgraph/node_int.h"
 #include "dsp/io/file_sink.h"
 #include "dsp/io/file_source.h"
 #include "dsp/io/iq_sink.h"
@@ -17,6 +18,7 @@
 #include "dsp/io/nng_iq_sink.h"
 #include "dsp/path/splitter.h"
 #include "dsp/resampling/rational_resampler.h"
+#include "dsp/utils/cosine_source.h"
 #include "dsp/utils/throttle.h"
 
 #include "common/widgets/fft_plot.h"
@@ -38,6 +40,7 @@
 #include "dsp/utils/real_to_complex.h"
 #include "dsp/utils/vco.h"
 #include <cstdint>
+#include <memory>
 
 namespace satdump
 {
@@ -66,6 +69,18 @@ namespace satdump
             {
                 ndsp::NodeInternal::render();
                 ((ndsp::ConstellationDisplayBlock *)blk.get())->constel.draw();
+                return false;
+            }
+        };
+
+        class NodeTestCosSou : public ndsp::NodeInternal
+        {
+        public:
+            NodeTestCosSou(const ndsp::Flowgraph *f) : ndsp::NodeInternal(f, std::make_shared<ndsp::CosBlock>()) {}
+
+            virtual bool render()
+            {
+                ndsp::NodeInternal::render();
                 return false;
             }
         };
@@ -111,6 +126,8 @@ namespace satdump
             registerNode<NodeTestFFT>(flowgraph, "fft_pan_cc", "FFT/FFT Pan");
             registerNode<NodeTestConst>(flowgraph, "const_disp_c", "View/Constellation Display");
             registerNode<NodeTestHisto>(flowgraph, "histo_disp_c", "View/Histogram Display");
+
+            registerNode<NodeTestCosSou>(flowgraph, "cosine_f", "Utils/Cosine Source");
 
             registerNodeSimple<ndsp::AGCBlock<complex_t>>(flowgraph, "AGC/Agc CC");
             registerNodeSimple<ndsp::AGCBlock<float>>(flowgraph, "AGC/Agc FF");

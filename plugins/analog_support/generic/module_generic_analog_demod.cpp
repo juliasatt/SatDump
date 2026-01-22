@@ -3,6 +3,7 @@
 #include "common/dsp/io/wav_writer.h"
 #include "core/config.h"
 #include "dsp/utils/freq_shift.h"
+#include "dsp/utils/hilbert.h"
 #include "imgui/imgui.h"
 #include "logger.h"
 #include <cmath>
@@ -107,6 +108,10 @@ namespace generic_analog
         logger->info("Demodulating to " + output_file_hint + ".wav");
         logger->info("Buffer size : " + std::to_string(d_buffer_size));
 
+        satdump::ndsp::HilbertBlock hilb;
+
+        hilb.set_cfg("ntaps", 241);
+
         time_t lastTime = 0;
 
         // Start
@@ -171,8 +176,13 @@ namespace generic_analog
                 volk_32fc_magnitude_32f((float *)work_buffer_float, (lv_32fc_t *)work_buffer_complex, nout);
             else if (modulation_type == ModulationType::USB)
             {
+                for (int i = 0; i < nout; i++)
+                {
+                    float t = i / final_samplerate;
+                    float amp = cos(t * d_symbolrate * M_PI);
+                }
             }
-                
+
             // Into const
             constellation.pushFloatAndGaussian(work_buffer_float, nout);
 
