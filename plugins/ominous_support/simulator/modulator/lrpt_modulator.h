@@ -7,7 +7,7 @@
 #include "common/dsp/demod/constellation.h"
 #include "common/dsp/utils/random.h"
 #include "dsp/block.h"
-#include "simulator/ccsds/ccsds_muxer.h"
+#include "../ccsds/ccsds_muxer.h"
 #include "utils/binary.h"
 #include <algorithm>
 #include <cstdint>

@@ -35,8 +35,8 @@
     "test_custom": {
         "name": "test_custom",
         "live": [
-            1,
-            2
+            1//,
+            // 2
         ],
         "frequencies": [],
         "work": {
@@ -44,25 +44,28 @@
             "soft": {
                 "module": "psk_demod",
                 "parameters": {
-                    "constellation": "qpsk",
-                    "symbolrate": 2e6,
-                    "rrc_alpha": 0.5,
-                    "pll_bw": 0.006
+                    "constellation": "bpsk",
+                    "symbolrate": 10e6,
+                    "agc_rate": 0.003,
+                    "pll_bw": 0.006,
+                    "rrc_alpha": 0.6,
+                    "rrc_taps": 31,
+                    "costas_bw": 0.005
                 }
-            },
-            "cadu": {
-                "module": "ccsds_conv_concat_decoder",
-                "parameters": {
-                    "constellation": "qpsk",
-                    "cadu_size": 8192,
-                    "viterbi_ber_thresold": 0.300,
-                    "viterbi_outsync_after": 20,
-                    "derandomize": true,
-                    "nrzm": false,
-                    "rs_i": 4,
-                    "rs_type": "rs223"
-                }
-            }
+            }//,
+            // "cadu": {
+            //     "module": "ccsds_conv_concat_decoder",
+            //     "parameters": {
+            //         "constellation": "qpsk",
+            //         "cadu_size": 8192,
+            //         "viterbi_ber_thresold": 0.300,
+            //         "viterbi_outsync_after": 20,
+            //         "derandomize": true,
+            //         "nrzm": false,
+            //         "rs_i": 4,
+            //         "rs_type": "rs223"
+            //     }
+            // }
         }
     },
     "ominous_orb": {

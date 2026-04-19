@@ -4,7 +4,7 @@
 #include "common/codings/reedsolomon/reedsolomon.h"
 #include "common/dsp/demod/constellation.h"
 #include "dsp/block.h"
-#include "simulator/ccsds/ccsds_muxer.h"
+#include "../ccsds/ccsds_muxer.h"
 
 namespace satdump
 {

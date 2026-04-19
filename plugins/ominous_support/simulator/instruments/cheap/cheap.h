@@ -2,7 +2,7 @@
 
 #include "../../worker.h"
 #include "image/image.h"
-#include "simulator/instruments/imager_simulator.h"
+#include "../imager_simulator.h"
 #include "utils/time.h"
 
 namespace satdump

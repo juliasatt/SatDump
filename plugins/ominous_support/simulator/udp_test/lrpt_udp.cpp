@@ -3,7 +3,7 @@
 #include "common/codings/randomization.h"
 #include "common/net/udp.h"
 #include "logger.h"
-#include "simulator/ccsds/ccsds_muxer.h"
+#include "../ccsds/ccsds_muxer.h"
 #include <chrono>
 #include <cstdint>
 #include <cstring>

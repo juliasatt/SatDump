@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ominous/instruments/csr/csr_lossy_reader.h"
-#include "ominous/instruments/csr/csr_reader.h"
-#include "ominous/instruments/loris/loris_reader.h"
+#include "instruments/csr/csr_lossy_reader.h"
+#include "instruments/csr/csr_reader.h"
+#include "instruments/loris/loris_reader.h"
 #include "pipeline/modules/base/filestream_to_filestream.h"
 #include "pipeline/modules/instrument_utils.h"
 

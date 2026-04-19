@@ -2,22 +2,22 @@
 
 #include "common/tracking/tracking.h"
 #include "dsp/channel_model/channel_model_simple.h"
-#include "dsp/io/nng_iq_sink.h"
+#include "dsp/io/nng_sink.h"
 #include "dsp/utils/throttle.h"
 #include "handlers/handler.h"
 #include "imgui/imgui.h"
 
-#include "simulator/instruments/cheap/cheap.h"
-#include "simulator/instruments/csr/csr.h"
-#include "simulator/instruments/csr/csr_lrpt.h"
-#include "simulator/instruments/eagle/eagle.h"
-#include "simulator/instruments/loris/loris.h"
-#include "simulator/instruments/loris/loris_proc.h"
-#include "simulator/instruments/navatt/navatt.h"
-#include "simulator/modulator/hrpt_modulator.h"
-#include "simulator/modulator/lrpt_modulator.h"
-#include "simulator/udp_test/lrpt_udp.h"
-#include "simulator/worker.h"
+#include "instruments/cheap/cheap.h"
+#include "instruments/csr/csr.h"
+#include "instruments/csr/csr_lrpt.h"
+#include "instruments/eagle/eagle.h"
+#include "instruments/loris/loris.h"
+#include "instruments/loris/loris_proc.h"
+#include "instruments/navatt/navatt.h"
+#include "modulator/hrpt_modulator.h"
+#include "modulator/lrpt_modulator.h"
+#include "udp_test/lrpt_udp.h"
+#include "worker.h"
 #include <complex.h>
 #include <memory>
 
@@ -75,12 +75,12 @@ namespace satdump
             std::shared_ptr<LRPTModulator> lrpt_modulator;
             std::shared_ptr<ndsp::ThrottleBlock<complex_t>> lrpt_throttle;
             std::shared_ptr<ndsp::ChannelModelSimpleBlock> lrpt_channel_model;
-            std::shared_ptr<ndsp::NNGIQSinkBlock> lrpt_nngsink;
+            std::shared_ptr<ndsp::NNGSinkBlock<complex_t>> lrpt_nngsink;
 
             std::shared_ptr<HRPTModulator> hrpt_modulator;
             std::shared_ptr<ndsp::ThrottleBlock<complex_t>> hrpt_throttle;
             std::shared_ptr<ndsp::ChannelModelSimpleBlock> hrpt_channel_model;
-            std::shared_ptr<ndsp::NNGIQSinkBlock> hrpt_nngsink;
+            std::shared_ptr<ndsp::NNGSinkBlock<complex_t>> hrpt_nngsink;
 
             std::shared_ptr<LRPTUdpSink> lrpt_udp_sink;
 

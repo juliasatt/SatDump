@@ -2,7 +2,7 @@
 #include "common/codings/ldpc/labrador/encoder.h"
 #include "common/codings/randomization.h"
 #include "logger.h"
-#include "simulator/ccsds/ccsds_muxer.h"
+#include "../ccsds/ccsds_muxer.h"
 #include <chrono>
 #include <complex.h>
 #include <cstdint>

@@ -1,6 +1,7 @@
 #include "simulator_handler.h"
 #include "common/geodetic/geodetic_coordinates.h"
 #include "dsp/channel_model/channel_model_simple.h"
+#include "dsp/io/nng_sink.h"
 #include "imgui/imgui.h"
 #include "init.h"
 #include "logger.h"
@@ -44,7 +45,7 @@ namespace satdump
             lrpt_channel_model->set_cfg("freq_shift", 2e3);
             lrpt_channel_model->link(lrpt_throttle.get(), 0, 0, 4);
 
-            lrpt_nngsink = std::make_shared<ndsp::NNGIQSinkBlock>();
+            lrpt_nngsink = std::make_shared<ndsp::NNGSinkBlock<complex_t>>();
             lrpt_nngsink->link(lrpt_channel_model.get(), 0, 0, 4);
 
             lrpt_throttle->start();
@@ -63,7 +64,7 @@ namespace satdump
             hrpt_channel_model->set_cfg("freq_shift", 2e3);
             hrpt_channel_model->link(hrpt_throttle.get(), 0, 0, 4);
 
-            hrpt_nngsink = std::make_shared<ndsp::NNGIQSinkBlock>();
+            hrpt_nngsink = std::make_shared<ndsp::NNGSinkBlock<complex_t>>();
             hrpt_nngsink->link(hrpt_channel_model.get(), 0, 0, 4);
             hrpt_nngsink->set_cfg("port", 8899);
 
