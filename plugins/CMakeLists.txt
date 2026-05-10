@@ -290,6 +290,10 @@ if(PLUGIN_KANOPUS OR PLUGINS_ALL)
   add_subdirectory(kanopus_support)
 endif()
 
+if(PLUGIN_SSDV OR PLUGINS_ALL)
+  add_subdirectory(ssdv_support)
+endif()
+
 option(PLUGIN_OMINOUS "Enable the Ominous support plugin" OFF)
 
 if(PLUGIN_OMINOUS)
