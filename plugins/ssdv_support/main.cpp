@@ -10,7 +10,8 @@ public:
 
     void init() { satdump::eventBus->register_handler<satdump::pipeline::RegisterModulesEvent>(registerPluginsHandler); }
 
-    static void registerPluginsHandler(const satdump::pipeline::RegisterModulesEvent &evt) { REGISTER_MODULE_EXTERNAL(evt.modules_registry, ssdv::instruments::SSDVInstrumentsDecoderModule); }
+    // static void registerPluginsHandler(const satdump::pipeline::RegisterModulesEvent &evt) { REGISTER_MODULE_EXTERNAL(evt.modules_registry, ssdv::instruments::SSDVInstrumentsDecoderModule); }
+    static void registerPluginsHandler(const satdump::pipeline::RegisterModulesEvent &evt) { REGISTER_MODULE_EXTERNAL(evt.modules_registry, ssdv::SSDVInstrumentsDecoderModule); }
 };
 
 PLUGIN_LOADER(SSDVSupport)
