@@ -1,8 +1,11 @@
-#include "test.h"
+#include "ssdv_decode.h"
 #include "common/ccsds/ccsds.h"
 #include "common/ccsds/ccsds_aos/demuxer.h"
 #include "common/ccsds/ccsds_aos/vcdu.h"
 #include "common/net/udp.h"
+#include "core/exception.h"
+#include "core/style.h"
+#include "imgui/imgui.h"
 #include "libs/supernovas/eph_manager.h"
 #include "logger.h"
 #include "pipeline/module.h"
@@ -11,6 +14,7 @@
 #include <cstdint>
 #include <fstream>
 #include <memory>
+#include <nng/nng.h>
 #include <string>
 #include <vector>
 
@@ -19,17 +23,32 @@ namespace ssdv
     SSDVInstrumentsDecoderModule::SSDVInstrumentsDecoderModule(std::string input_file, std::string output_file_hint, nlohmann::json parameters)
         : satdump::pipeline::base::FileStreamToFileStreamModule(input_file, output_file_hint, parameters)
     {
-        ip_addr = parameters.contains("ip_addr") ? parameters["ip_addr"].get<std::string>() : "127.0.0.1";
-        addr_port = parameters.contains("addr_port") ? parameters["addr_port"].get<int>() : 9000;
+        // if (parameters.contains("pkt_size") > 0)
+        //     pkt_size = parameters["pkt_size"].get<int>();
+        // else
+        //     throw satdump_exception("pkt_size parameter must be present!");
+
+        if (parameters.count("server_address") > 0)
+            addr = parameters["server_address"].get<std::string>();
+        else
+            throw satdump_exception("server_address parameter must be present!");
+
+        if (parameters.count("server_port") > 0)
+            port = parameters["server_port"].get<int>();
+        else
+            throw satdump_exception("server_port parameter must be present!");
     }
 
     void SSDVInstrumentsDecoderModule::process()
     {
         uint8_t cadu[1024];
 
-        client = new net::UDPClient((char *)ip_addr.c_str(), addr_port);
+        // net_buf = new uint8_t[pkt_size];
+
+        net::UDPClient udp_send((char *)addr.c_str(), port);
 
         logger->info("Meow :3");
+        logger->info("Demultiplexing and deframing...");
 
         ccsds::ccsds_aos::Demuxer demuxer_vcid0(884, false);
 
@@ -43,21 +62,29 @@ namespace ssdv
 
             ccsds::ccsds_aos::VCDU vcdu = ccsds::ccsds_aos::parseVCDU(cadu);
 
-            client->send(cadu, 1024);
+            // client->send(cadu, 1024);
 
-            // if (vcdu.vcid == 0)
-            // {
-            //     std::vector<ccsds::CCSDSPacket> ccsdsFrames = demuxer_vcid0.work(cadu);
-            //     for (ccsds::CCSDSPacket &pkt : ccsdsFrames)
-            //         if (pkt.header.apid == 1)
-            //         {
-            //             // pkt.payload.resize(65536);
-            //             output.write((char *)pkt.header.raw, 6);
-            //             output.write((char *)pkt.payload.data(), 1024);
-            //             // ssdv_reader.work(pkt);
-            //         }
-            // }
+            if (vcdu.vcid == 0)
+            {
+                std::vector<ccsds::CCSDSPacket> ccsdsFrames = demuxer_vcid0.work(cadu);
+                for (ccsds::CCSDSPacket &pkt : ccsdsFrames)
+                    if (pkt.header.apid == 10)
+                    {
+                        ssdv_ng_reader.work(pkt);
+                        // pkt.payload.resize(65536);
+                        // output.write((char *)pkt.header.raw, 6);
+                        // output.write((char *)pkt.payload.data(), 1024);
+                        // ssdv_reader.work(pkt);
+                    }
+                    else if (pkt.header.apid == 20)
+                    {
+                        output.write((char *)pkt.payload.data(), pkt.payload.size());
+                        udp_send.send(pkt.payload.data(), pkt.payload.size());
+                    }
+            }
         }
+
+        // delete[] net_buf;
 
         cleanup();
 
@@ -92,14 +119,34 @@ namespace ssdv
             ImGui::TableSetColumnIndex(0);
             ImGui::Text("SSDV Images");
             ImGui::TableSetColumnIndex(1);
-            // ImGui::TextColored(style::theme.green, "%d", ssdv_reader.img_cnt);
+            ImGui::TextColored(style::theme.green, "%d", ssdv_ng_reader.img_cnt);
             ImGui::TableSetColumnIndex(2);
-            drawStatus(ssdv_status);
+            drawStatus(ssdv_ng_status);
+
+            // TODOREWORK: table with packets sent?
 
             ImGui::EndTable();
         }
 
-        drawProgressBar();
+        ImGui::BeginGroup();
+        {
+            ImGui::Button("Network Server", {200 * ui_scale, 20 * 20 * ui_scale});
+            {
+
+                ImGui::Text("Address  : ");
+                ImGui::SameLine();
+                ImGui::TextColored(style::theme.green, "%s", addr.c_str());
+
+                ImGui::Text("Port    : ");
+                ImGui::SameLine();
+                ImGui::TextColored(style::theme.green, UITO_C_STR(port));
+            }
+        }
+
+        ImGui::EndGroup();
+
+        if (!d_is_streaming_input)
+            drawProgressBar();
 
         ImGui::End();
     }

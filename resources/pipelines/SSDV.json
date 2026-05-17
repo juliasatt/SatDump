@@ -1,6 +1,38 @@
 {
-	"ssdv_bpsk_concat2": {
-		"name": "Custom SSDV (BPSK + Concat) 2",
+    "ssdv_bpsk": {
+		"name": "SSDV-NG",
+		"live": [1, 2, 3],
+		"frequencies": [],
+		"parameters": {},
+		"work": {
+			"baseband": {},
+			"soft": {
+				"module": "psk_demod",
+				"parameters": {
+					"constellation": "bpsk",
+					"symbolrate": 1e6,
+					"pll_bw": 0.02,
+					"rrc_alpha": 0.5
+				}
+			},
+			// "cadu": {
+			// 	"module": "ssdv_ng_decoder",
+			// 	"parameters": {
+			// 		"viterbi_ber_thresold": 0.3,
+			// 		"viterbi_outsync_after": 20
+			// 	}
+			// },
+            "products": {
+                "module": "ssdv_ng_instruments",
+                "parameters": {
+                    "server_address": "0.0.0.0",
+                    "server_port": 9000
+                }
+            }
+		}
+	},
+	"ssdv_bpsk_net": {
+		"name": "SSDV Network Server",
 		"live": [1, 2, 3],
 		"frequencies": [],
 		"parameters": {

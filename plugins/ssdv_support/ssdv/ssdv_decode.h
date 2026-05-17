@@ -1,10 +1,10 @@
 #pragma once
 
-#include "common/net/udp.h"
-#include "nlohmann/json.hpp"
+#include "instruments/ssdv-ng/ssdv.h"
 #include "pipeline/module.h"
 #include "pipeline/modules/base/filestream_to_filestream.h"
 #include "pipeline/modules/instrument_utils.h"
+#include <cstdint>
 #include <fcntl.h>
 #include <memory>
 #include <string>
@@ -16,12 +16,17 @@ namespace ssdv
     class SSDVInstrumentsDecoderModule : public satdump::pipeline::base::FileStreamToFileStreamModule
     {
     protected:
-        std::string ip_addr = "127.0.0.1";
-        int addr_port = 9000;
-        instrument_status_t ssdv_status = DECODING;
+        ssdvng::SSDVNGReader ssdv_ng_reader;
+        instrument_status_t ssdv_ng_status = DECODING;
+
+    protected:
+        // uint8_t *net_buf;
+        int pkt_size;
+        std::string addr;
+        int port;
 
     private:
-        net::UDPClient *client;
+        // net::UDPClient *client;
 
     public:
         SSDVInstrumentsDecoderModule(std::string input_file, std::string output_file_hint, nlohmann::json parameters);
