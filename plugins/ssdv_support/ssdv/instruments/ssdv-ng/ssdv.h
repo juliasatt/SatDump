@@ -16,7 +16,7 @@ namespace ssdv
         public:
             SSDVNGReader();
             ~SSDVNGReader();
-            int img_cnt;
+            int img_cnt = 0;
             void work(ccsds::CCSDSPacket &packet);
         };
     } // namespace ssdvng

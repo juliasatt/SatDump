@@ -3,7 +3,6 @@
 
 #include "pipeline/module.h"
 #include "ssdv/ssdv_decode.h"
-#include "ssdv/ssdv_ng_decoder.h"
 
 class SSDVSupport : public satdump::Plugin
 {
@@ -16,7 +15,6 @@ public:
     static void registerPluginsHandler(const satdump::pipeline::RegisterModulesEvent &evt)
     {
         REGISTER_MODULE_EXTERNAL(evt.modules_registry, ssdv::SSDVInstrumentsDecoderModule);
-        // REGISTER_MODULE_EXTERNAL(evt.modules_registry, ssdv::SSDVDecoderModule);
     }
 };
 

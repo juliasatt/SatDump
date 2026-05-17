@@ -21,7 +21,7 @@ namespace ssdv
 
     protected:
         // uint8_t *net_buf;
-        int pkt_size;
+        // int pkt_size;
         std::string addr;
         int port;
 

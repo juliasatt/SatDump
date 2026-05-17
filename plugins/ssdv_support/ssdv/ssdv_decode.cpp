@@ -52,7 +52,7 @@ namespace ssdv
 
         ccsds::ccsds_aos::Demuxer demuxer_vcid0(884, false);
 
-        std::ofstream output("output.ccsds");
+        // std::ofstream output("output.ccsds");
 
         std::vector<uint8_t> ssdv_scids;
 
@@ -76,10 +76,11 @@ namespace ssdv
                         // output.write((char *)pkt.payload.data(), 1024);
                         // ssdv_reader.work(pkt);
                     }
-                    else if (pkt.header.apid == 20)
+                    else if (pkt.header.apid == 20 && pkt.payload.size() == 188)
                     {
-                        output.write((char *)pkt.payload.data(), pkt.payload.size());
-                        udp_send.send(pkt.payload.data(), pkt.payload.size());
+                        // logger->debug("Length : %d Size : %d", pkt.header.packet_length, pkt.payload.size());
+                        // output.write((char *)pkt.payload.data(), pkt.payload.size());
+                        udp_send.send(pkt.payload.data(), 188);
                     }
             }
         }
@@ -128,25 +129,37 @@ namespace ssdv
             ImGui::EndTable();
         }
 
-        ImGui::BeginGroup();
-        {
-            ImGui::Button("Network Server", {200 * ui_scale, 20 * 20 * ui_scale});
-            {
-
-                ImGui::Text("Address  : ");
-                ImGui::SameLine();
-                ImGui::TextColored(style::theme.green, "%s", addr.c_str());
-
-                ImGui::Text("Port    : ");
-                ImGui::SameLine();
-                ImGui::TextColored(style::theme.green, UITO_C_STR(port));
-            }
-        }
-
-        ImGui::EndGroup();
+        // ImGui::BeginGroup();
+        // {
+        //     ImGui::Button("Network Server", {200 * ui_scale, 20 * 20 * ui_scale});
+        //     {
+        //
+        //         ImGui::Text("Address  : ");
+        //         ImGui::SameLine();
+        //         ImGui::TextColored(style::theme.green, "%s", addr.c_str());
+        //
+        //         ImGui::Text("Port    : ");
+        //         ImGui::SameLine();
+        //         ImGui::TextColored(style::theme.green, UITO_C_STR(port));
+        //     }
+        // }
+        //
+        // ImGui::EndGroup();
 
         if (!d_is_streaming_input)
             drawProgressBar();
+
+        ImGui::End();
+
+        ImGui::Begin("Network Server", NULL, window ? 0 : NOWINDOW_FLAGS);
+
+        ImGui::Text("Address  : ");
+        ImGui::SameLine();
+        ImGui::TextColored(style::theme.green, "%s", addr.c_str());
+
+        ImGui::Text("Port    : ");
+        ImGui::SameLine();
+        ImGui::TextColored(style::theme.green, UITO_C_STR(port));
 
         ImGui::End();
     }
