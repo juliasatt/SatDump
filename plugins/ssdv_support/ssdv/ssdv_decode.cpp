@@ -1,22 +1,4 @@
 #include "ssdv_decode.h"
-#include "common/ccsds/ccsds.h"
-#include "common/ccsds/ccsds_aos/demuxer.h"
-#include "common/ccsds/ccsds_aos/vcdu.h"
-#include "common/net/udp.h"
-#include "core/exception.h"
-#include "core/style.h"
-#include "imgui/imgui.h"
-#include "libs/supernovas/eph_manager.h"
-#include "logger.h"
-#include "pipeline/module.h"
-#include "products/dataset.h"
-#include "utils/stats.h"
-#include <cstdint>
-#include <fstream>
-#include <memory>
-#include <nng/nng.h>
-#include <string>
-#include <vector>
 
 namespace ssdv
 {
@@ -33,28 +15,34 @@ namespace ssdv
         else
             throw satdump_exception("server_address parameter must be present!");
 
-        if (parameters.count("server_port") > 0)
-            port = parameters["server_port"].get<int>();
+        if (parameters.count("server_port_apid_10") > 0)
+            port_apid_10 = parameters["server_port_apid_10"].get<int>();
         else
-            throw satdump_exception("server_port parameter must be present!");
+            throw satdump_exception("server_port_apid_10 parameter must be present!");
+
+        if (parameters.count("server_port_apid_20") > 0)
+            port_apid_20 = parameters["server_port_apid_20"].get<int>();
+        else
+            throw satdump_exception("server_port_apid_20 parameter must be present!");
+
+        if (parameters.count("server_port_apid_100") > 0)
+            port_apid_100 = parameters["server_port_apid_100"].get<int>();
+        else
+            throw satdump_exception("server_port_apid_100 parameter must be present!");
     }
 
     void SSDVInstrumentsDecoderModule::process()
     {
         uint8_t cadu[1024];
 
-        // net_buf = new uint8_t[pkt_size];
-
-        net::UDPClient udp_send((char *)addr.c_str(), port);
+        net::UDPClient udp_apid_10_send((char *)addr.c_str(), port_apid_10);
+        net::UDPClient udp_apid_20_send((char *)addr.c_str(), port_apid_20);
+        net::UDPClient udp_apid_100_send((char *)addr.c_str(), port_apid_100);
 
         logger->info("Meow :3");
         logger->info("Demultiplexing and deframing...");
 
-        ccsds::ccsds_aos::Demuxer demuxer_vcid0(882, false);
-
-        // std::ofstream output("output.ccsds");
-
-        std::vector<uint8_t> ssdv_scids;
+        ccsds::ccsds_aos::Demuxer demuxer_vcid0(884, false);
 
         while (should_run())
         {
@@ -62,25 +50,26 @@ namespace ssdv
 
             ccsds::ccsds_aos::VCDU vcdu = ccsds::ccsds_aos::parseVCDU(cadu);
 
-            // client->send(cadu, 1024);
-
             if (vcdu.vcid == 0)
             {
                 std::vector<ccsds::CCSDSPacket> ccsdsFrames = demuxer_vcid0.work(cadu);
                 for (ccsds::CCSDSPacket &pkt : ccsdsFrames)
-                    if (pkt.header.apid == 10)
+                    if (pkt.header.apid == 10 && pkt.payload.size() == 246)
                     {
+                        udp_apid_10_send.send(pkt.payload.data(), 246);
                         ssdv_ng_reader.work(pkt);
                         // pkt.payload.resize(65536);
                         // output.write((char *)pkt.header.raw, 6);
                         // output.write((char *)pkt.payload.data(), 1024);
-                        // ssdv_reader.work(pkt);
                     }
                     else if (pkt.header.apid == 20 && pkt.payload.size() == 188)
                     {
-                        // logger->debug("Length : %d Size : %d", pkt.header.packet_length, pkt.payload.size());
                         // output.write((char *)pkt.payload.data(), pkt.payload.size());
-                        udp_send.send(pkt.payload.data(), 188);
+                        udp_apid_20_send.send(pkt.payload.data(), 188);
+                    }
+                    else if (pkt.header.apid == 100)
+                    {
+                        udp_apid_100_send.send(pkt.payload.data(), 10);
                     }
             }
         }
@@ -129,23 +118,6 @@ namespace ssdv
             ImGui::EndTable();
         }
 
-        // ImGui::BeginGroup();
-        // {
-        //     ImGui::Button("Network Server", {200 * ui_scale, 20 * 20 * ui_scale});
-        //     {
-        //
-        //         ImGui::Text("Address  : ");
-        //         ImGui::SameLine();
-        //         ImGui::TextColored(style::theme.green, "%s", addr.c_str());
-        //
-        //         ImGui::Text("Port    : ");
-        //         ImGui::SameLine();
-        //         ImGui::TextColored(style::theme.green, UITO_C_STR(port));
-        //     }
-        // }
-        //
-        // ImGui::EndGroup();
-
         if (!d_is_streaming_input)
             drawProgressBar();
 
@@ -157,9 +129,17 @@ namespace ssdv
         ImGui::SameLine();
         ImGui::TextColored(style::theme.green, "%s", addr.c_str());
 
-        ImGui::Text("Port    : ");
+        ImGui::Text("Port For APID 10    : ");
         ImGui::SameLine();
-        ImGui::TextColored(style::theme.green, UITO_C_STR(port));
+        ImGui::TextColored(style::theme.green, UITO_C_STR(port_apid_10));
+
+        ImGui::Text("Port For APID 20    : ");
+        ImGui::SameLine();
+        ImGui::TextColored(style::theme.green, UITO_C_STR(port_apid_20));
+
+        ImGui::Text("Port For APID 100    : ");
+        ImGui::SameLine();
+        ImGui::TextColored(style::theme.green, UITO_C_STR(port_apid_100));
 
         ImGui::End();
     }

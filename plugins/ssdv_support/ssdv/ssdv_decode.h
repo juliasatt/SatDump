@@ -1,13 +1,14 @@
 #pragma once
 
+#include "common/ccsds/ccsds_aos/demuxer.h"
+#include "common/ccsds/ccsds_aos/vcdu.h"
+#include "common/net/udp.h"
+#include "core/exception.h"
 #include "instruments/ssdv-ng/ssdv.h"
+#include "logger.h"
 #include "pipeline/module.h"
 #include "pipeline/modules/base/filestream_to_filestream.h"
 #include "pipeline/modules/instrument_utils.h"
-#include <cstdint>
-#include <fcntl.h>
-#include <memory>
-#include <string>
 
 namespace ssdv
 {
@@ -20,13 +21,10 @@ namespace ssdv
         instrument_status_t ssdv_ng_status = DECODING;
 
     protected:
-        // uint8_t *net_buf;
-        // int pkt_size;
         std::string addr;
-        int port;
-
-    private:
-        // net::UDPClient *client;
+        int port_apid_10;
+        int port_apid_20;
+        int port_apid_100;
 
     public:
         SSDVInstrumentsDecoderModule(std::string input_file, std::string output_file_hint, nlohmann::json parameters);

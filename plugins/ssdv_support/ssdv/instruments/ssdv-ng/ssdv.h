@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/ccsds/ccsds.h"
+#include "logger.h"
 #include <cstdint>
 #include <vector>
 

@@ -1,6 +1,4 @@
 #include "ssdv.h"
-#include "logger.h"
-#include <cstdint>
 
 namespace ssdv
 {
@@ -31,11 +29,6 @@ namespace ssdv
             // uint8_t *img = &packet.payload[13];
 
             // uint8_t *dat = &packet.payload[0];
-
-            uint16_t image_id = packet.payload[5] << 8 | packet.payload[6];
-            uint32_t mcu_count = packet.payload[10] * packet.payload[11];
-
-            logger->debug("Image ID : %d MCU Count : %d", image_id, mcu_count);
 
             // if (packet.payload.size() )
         }
