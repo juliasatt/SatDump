@@ -36,7 +36,7 @@
                 "parameters": {
                     "server_address": "0.0.0.0",
                     "server_port_apid_10": 9010,
-                    "server_port_apid_20": 9010,
+                    "server_port_apid_20": 9020,
                     "server_port_apid_100": 9100
                 }
             }
