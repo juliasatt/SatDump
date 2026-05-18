@@ -50,7 +50,7 @@ namespace ssdv
         logger->info("Meow :3");
         logger->info("Demultiplexing and deframing...");
 
-        ccsds::ccsds_aos::Demuxer demuxer_vcid0(884, false);
+        ccsds::ccsds_aos::Demuxer demuxer_vcid0(882, false);
 
         // std::ofstream output("output.ccsds");
 

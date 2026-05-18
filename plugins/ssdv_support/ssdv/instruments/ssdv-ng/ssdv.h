@@ -11,7 +11,7 @@ namespace ssdv
         class SSDVNGReader
         {
         private:
-            // std::vector<uint8_t> full_pkt;
+            std::vector<uint8_t> full_pkt;
 
         public:
             SSDVNGReader();
